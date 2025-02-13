@@ -192,6 +192,21 @@ def consecutive(data, stepsize=1):
     return np.split(data, np.where(np.diff(data) != stepsize)[0]+1)
 
 
+@jit
+def remove_hl_pix(spectrum, j0, j1):
+
+    (Nstokes, Nwave, Nscan, Npix) = spectrum.shape
+    
+    for n in range(Nstokes):
+        for m in range(Nwave):
+            for i in range(Nscan):
+                for j in range(j0+1, j1-1, 1):
+                    frac = (j1 - j) / (j1 - j0)
+                    spectrum[n, m, i, j] = \
+                        (1.0 - frac) * spectrum[n, m, i, j0] + \
+                        frac * spectrum[n, m, i, j1]
+
+
 class hairline:
 
     def __init__(self, region):
@@ -213,11 +228,11 @@ class hairlineset:
         HAIR_CONTRAST_TRESHOLD = 0.5
         HAIR_MARGIN            = 5
 
-        (Npix, Nscan) = np.shape(self.reference_img)
+        (Nscan, Npix) = np.shape(self.reference_img)
 
         ## Spatial average over the scan direction in the continuum intensity
 
-        avg_cont_slit  = np.mean(self.reference_img, axis=1)
+        avg_cont_slit  = np.mean(self.reference_img, axis=0)
         avg_cont_slit /= np.mean(avg_cont_slit)
         
         hairmask      = np.where(avg_cont_slit < HAIR_CONTRAST_TRESHOLD)
@@ -239,19 +254,10 @@ class hairlineset:
 
     def remove(self, spectrum):
 
-        (Npix, Nscan, Nwave, Nstokes) = np.shape(spectrum)
-
         for hl in self.hairlines:
-            for n in range(Nstokes):
-                for m in range(Nwave):
-                    for i in range(Nscan):
-                        j0, j1 = hl.region
-                        for j in range(j0+1, j1-1, 1):
-                            frac = (j1 - j) / (j1 - j0)
-                            spectrum[j, i, m, n] = \
-                                (1.0 - frac) * spectrum[j0, i, m, n] + \
-                                frac * spectrum[j1, i, m, n]
-                    
+            j0, j1 = hl.region
+            remove_hl_pix(spectrum, j0, j1)
+
 
 def psf_broad(wavelength, spectrum, FWHM, mode="Gaussian"):
 
@@ -443,7 +449,7 @@ def air_to_vacuum(lambda_air):
 ##  --- Routines for interpolation by cubic convolution.
 ##
 ##      Author:        Han Uitenbroek  (huitenbroek@nso.edu)
-##       Last modified: Fri Jan 31 09:19:29 2025 --
+##       Last modified: Mon Feb  3 13:44:25 2025 --
 ##
 ##  See: R.G. Keys, 1981, in IEEE Trans. Acoustics, Speech,
 ##        and Signal Processing, Vol. 29, pp. 1153-1160.
