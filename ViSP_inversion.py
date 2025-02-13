@@ -291,7 +291,7 @@ class ViSP_inversion:
             print("Data directory {} does not exist. Exiting".format(dataset_root))
             exit()
 
-        if !os.path.isdir(fits_directory):
+        if not os.path.isdir(fits_directory):
             os.mkdir(fits_directory)
 
         self.fits_directory = fits_directory
@@ -476,7 +476,8 @@ class ViSP_inversion:
 def main():
 
 ##    dataset_root = '/Users/han/Data/DKIST/id.136838.353289/'
-    dataset_root = '/Users/han/Data/DKIST/id.136838.527585/'
+    dataset_root   = '/home/han/Data/DKIST/id.136838.527585/'
+    fits_directory = '/home/han/Data/DKIST/Fits_dir/'
     
     inv = ViSP_inversion(dataset_root, fits_directory, fiducial_arm_ID=3)
     
