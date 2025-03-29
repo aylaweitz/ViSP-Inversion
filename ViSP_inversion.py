@@ -1,8 +1,7 @@
 import glob
 import os
 import numpy as np
-from scipy import constants, interpolate
-import matplotlib.pyplot as plt
+import pandas as pd
 from numba import jit
 import multiprocessing as mp
 from astropy.io import fits
@@ -10,6 +9,11 @@ from astropy.coordinates import SkyCoord, get_sun
 from astropy.wcs import WCS
 from astropy.time import Time
 import astropy.units as units
+from scipy.ndimage import shift
+from scipy import constants, interpolate
+from sklearn import linear_model
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
 import dkist
 from rhanalyze.satlas import satlas
@@ -30,8 +34,6 @@ class ViSP_arm:
         self.aux_data_dir = os.path.join(home_dir, "Source/Python/DKIST/ViSP_invert/Aux_data")
 
         self.ViSP_analyze_asdf()
-        self.ViSP_find_wavelength_solution()
-        self.ViSP_read_arm_data()
 
 
     def ViSP_analyze_asdf(self):
@@ -90,12 +92,62 @@ class ViSP_arm:
                  self.DeSIRe_line = DeSIRe_line_list[3]
                  clv_file = "CaII_8542_clv.fits"
 
-        self.clv_file_path = os.path.join(self.aux_data_dir, clv_file)
+        clv_file_path = os.path.join(self.aux_data_dir, clv_file)
+        self.clv_interp = self.ViSP_read_clv()
+
+    def ViSP_fit_line_positions(self, waves_guess)
+
+        ATL_RANGE = 2.0
+        DELTA_LAM = 0.01
+
+        Nlambda = waves_guess.shape[0]
+        
+        fts = satlas()
+        self.lambda_atlas, intensity, continuum = fts.nmsiatlas(ref_lambda - ATL_RANGE,\
+                                                                ref_lambda + ATL_RANGE)
+        self.norm_atlas = intensity / continuum   
+        Nlines          = len(lines_arm)
+        wave_positions  = np.zeros(Nlines, dtype=np.float64)
+        index_positions = np.zeros(Nlines, dtype=np.float64)
+
+        n = 0
+        for key, label in lines_arm.items():
+            values  = np.array([key - DELTA_LAM, key + DELTA_LAM])
+            indices = vt.table_invert(self.lambda_atlas, values, mode="index")
+
+            wave_positions[n] = vt.find_parmin(self.lambda_atlas[indices[0]:indices[1]],
+                                               self.norm_atlas[indices[0]:indices[1]])
+            n += 1
+
+        n = 0
+        for key, label in lines_arm.items():
+            values  = np.array([key - DELTA_LAM, key + DELTA_LAM])
+            indices = vt.table_invert(wave_guess, values, mode="index")
+
+            wave_min = vt.find_parmin(wave_guess[indices[0]:indices[1]],
+                                      norm_spectrum[indices[0]:indices[1]])
+            index_positions[n] = vt.table_invert(wave_guess, wave_min, mode="effective")[0]
+
+            n += 1
+     
+        coefficients = np.polyfit(index_positions, wave_positions, 2)
+        poly         = np.poly1d(coefficients)
+
+        return poly(np.arange(Nlambda))
 
 
     def ViSP_find_wavelength_solution(self):
 
-        self.avg_spectrum    = np.mean(self.dataset.data[0, :, :, :].compute(), axis=(0, 2))
+        POL_THRESHOLD = 0.02
+        
+        stokes_I = self.dataset.data[0, :, :, :].compute()
+        
+        self.circ_pol_map = np.sum(np.abs(self.dataset.data[3, :, :, :]) / \
+                                   stokes_I], axis=2) / Nwave
+        self.circ_pol_map.compute()
+        quiet = np.where(self.circ_pol_map < POL_THRESHOLD)
+
+        self.avg_spectrum    = np.mean(stokes_I[:, quiet[0], quiet[1]], axis=0)
         self.continuum_index = np.argmax(self.avg_spectrum)
 
         norm_spectrum = self.avg_spectrum / np.max(self.avg_spectrum)
@@ -116,7 +168,8 @@ class ViSP_arm:
                                   [630.568, 630.588], [630.643, 630.666]]
 
                  self.lambda_blu = 630.085
-                 self.lambda_red = 630.306
+                 self.lambda_red = 630.330
+                 self.continuum_interval = [630.300, self.lambda_red]
 
              case "Na I D1 (589.59 nm)":
                  dispersion   = 1.4E-3
@@ -127,6 +180,7 @@ class ViSP_arm:
 
                  self.lambda_blu = 588.653
                  self.lambda_red = 589.886
+                 self.continuum_interval = [589.360, 589.420]
                  
              case "Ca II (854.21 nm)":
                  dispersion   = 1.873E-03
@@ -137,50 +191,43 @@ class ViSP_arm:
 
                  self.lambda_blu = 853.232
                  self.lambda_red = 855.193
-
+                 self.continuum_interval = [self.lambda_blu, 853.300]
                  
-        wave_corr = ref_lambda + dispersion * \
+        waves_guess = ref_lambda + dispersion * \
             (np.arange(Nlambda, dtype=np.float64) - ref_index)
-
-        ATL_RANGE = 2.0
-        DELTA_LAM = 0.01
-        
-        fts = satlas()
-        self.lambda_atlas, intensity, continuum = fts.nmsiatlas(ref_lambda - ATL_RANGE,\
-                                                                ref_lambda + ATL_RANGE)
-        self.norm_atlas = intensity / continuum   
-        Nlines          = len(lines_arm)
-        wave_positions  = np.zeros(Nlines, dtype=np.float64)
-        index_positions = np.zeros(Nlines, dtype=np.float64)
-
-        n = 0
-        for key, value in lines_arm.items():
-            values  = np.array([key - DELTA_LAM, key + DELTA_LAM])
-            indices = vt.table_invert(self.lambda_atlas, values, mode="index")
-
-            wave_positions[n] = vt.find_parmin(self.lambda_atlas[indices[0]:indices[1]],
-                                               self.norm_atlas[indices[0]:indices[1]])
-            n += 1
-
-        n = 0
-        for key, value in lines_arm.items():
-            values  = np.array([key - DELTA_LAM, key + DELTA_LAM])
-            indices = vt.table_invert(wave_corr, values, mode="index")
-
-            wave_min = vt.find_parmin(wave_corr[indices[0]:indices[1]],
-                                      norm_spectrum[indices[0]:indices[1]])
-            index_positions[n] = vt.table_invert(wave_corr, wave_min, mode="effective")[0]
-
-            n += 1
-     
-        coefficients = np.polyfit(index_positions, wave_positions, 2)
-        poly         = np.poly1d(coefficients)
 
         #-# Store the calibrated wavelengths for the current arm
         
-        self.calib_waves = poly(np.arange(Nlambda))
-        
+        self.calib_waves = self.ViSP_fit_line_positions(waves_guess)
 
+
+    def ViSP_broadened_atlas(self, waves, FWHM, wave_offset):
+
+        f = interpolate.interp1d(self.lambda_atlas + wave_offset, self.norm_atlas)
+        atlas_int = f(waves)
+
+        Nwave = len(atlas_int)
+        mu_wave_grid = np.zeros((Nwave, 2), dtype=np.float32)
+        mu_wave_grid[:, 0] = self.mu
+        mu_wave_grid[:, 1] = waves
+        atlas_int *= vt.LimbDark(self.DeSIRe_line.lambda0, self.mu) * self.clv_interp(mu_wave_grid)
+        
+        return vt.psf_broad(waves, atlas_int, FWHM, mode="Gaussian")
+
+
+    def ViSP_find_PSF(self, pol_map):
+
+        POL_THRESHOLD = 0.01
+
+        quiet = np.where(pol_map < POL_THRESHOLD)
+        avg_quiet_spectrum = np.mean(self.spectrum[0, :, quiet[0], quiet[1]), axis=0)
+        
+        popt, pcov = curve_fit(self.ViSP_broadened_atlas, self.calib_waves, avg_quiet_spectrum) 
+
+        self.FWHM = popt[0]
+        self.calib_waves += popt[1]
+
+        
     def ViSP_read_arm_data(self):
 
         limits = vt.table_invert(self.calib_waves, np.array([self.lambda_blu, self.lambda_red]), \
@@ -249,7 +296,7 @@ class ViSP_arm:
         return spectrum_remap
 
     
-    def ViSP_find_clv(self, mu, cont_index):
+    def ViSP_read_clv(self):
 
         hdul = fits.open(self.clv_file_path)
 
@@ -258,32 +305,183 @@ class ViSP_arm:
         waves = hdul[2].data
         hdul.close()
 
-        clv_interp = interpolate.RegularGridInterpolator((xmu, waves), clv)
+        clv_interp = interpolate.RegularGridInterpolator((xmu, waves), clv,\
+                                                         bounds_error=False, fill_value=None)
         
-        return clv_interp([mu, cont_index])
+        return clv_interp
 
         
-    def ViSP_calibrate(self, mu=1.0):
+    def ViSP_calibrate_intensity(self, pol_map):
 
+        POL_THRESHOLD = 0.01
+        
         (Nstokes, Nwave, Nscan, Npix) = self.spectrum.shape
 
-        limbdark = vt.LimbDark(self.DeSIRe_line.lambda0, mu)
+        limbdark = vt.LimbDark(self.DeSIRe_line.lambda0, self.mu)
         
         lambda_cont      = self.calib_waves[self.continuum_index]
         index_cont_atlas = vt.table_invert(self.lambda_atlas, lambda_cont, mode="index")
         cont_atlas       = self.norm_atlas[index_cont_atlas]
 
-        avg_continuum = np.mean(self.spectrum[0, self.continuum_index, :, :], axis=(0, 1))
+        quiet = np.where(pol_map < POL_THRESHOLD)
+        avg_continuum = np.mean(self.spectrum[0, self.continuum_index, quiet[0], quiet[1]])
 
-        clv_factor = self.ViSP_find_clv(mu, lambda_cont)
+        clv_factor = self.clv_interp([self.mu, lambda_cont])[0]
+        print(clv_factor, lambda_cont, self.mu)
         
         normalization  = (limbdark * cont_atlas * clv_factor) / avg_continuum
         self.spectrum *= normalization
+
+
+    def ViSP_write_data_fits(self, fits_directory):
+
+        filename  = "ViSP_" + self.datasetID + "_" + self.spectrumID + ".fits"
+        file_path = os.path.join(fits_directory, filename)
+
+        hdu  = fits.PrimaryHDU(self.spectrum)
+        hduw = fits.ImageHDU(self.calib_waves)
+        hdul = fits.HDUList([hdu, hduw])
+        hdul.writeto(file_path, overwrite=True)
+
+
+    def ViSP_get_rebin_params(self, fiducial_arm, slit_width):
+        
+        self.Nscan_fid, self.Npix_fid = fiducial_arm.spectrum.shape[2:4]
+        
+        self.Npix_avg   = int(np.floor(slit_width / fiducial_arm.slit_sample))
+        self.Npix_rebin = self.Npix_fid // self.Npix_avg
+        self.last_pixel = self.Npix_avg * self.Npix_rebin
+        
+        print("Npix_avg: {0}, Npix_rebin: {1}".format(self.Npix_avg, self.Npix_rebin))
+
+        
+    def ViSP_rebin(self):
+
+        Nstokes, Nwave = self.spectrum.shape[0:2]
+        save_spectrum  = np.zeros((Nstokes, Nwave, self.Nscan_fid, self.Npix_rebin), \
+                                  dtype=np.float32)
+            
+        save_spectrum[:, :, :, :] = np.mean(np.reshape(self.spectrum[:, :, :, 0:self.last_pixel], \
+                                                       (Nstokes, Nwave, self.Nscan_fid, \
+                                                        self.Npix_rebin, self.Npix_avg)), axis=4)
+
+        del self.spectrum
+        self.spectrum = save_spectrum
+
+
+    def ViSP_remove_crosstalk(self, mode="Sanchez_Kuhn"):
+       
+        c0, c1 = vt.table_invert(self.calib_waves, self.continuum_interval, mode="index")
+ 
+        DELTA_CORE = 5
+        DELTA_WING = 20
+        P_TRESHOLD = 0.05
+        
+        index0   = vt.table_invert(self.calib_waves, self.DeSIRe_line.lambda0, mode="index")[0]
+        l0c, l1c = index0 - DELTA_CORE, index0 + DELTA_CORE
+        l0w, l1w = index0 - DELTA_WING, index0 + DELTA_WING
+        
+        polmap = np.max(np.sqrt(np.sum(self.spectrum[1:, l0w:l1w, :, :]**2, axis=0)) / \
+                        self.spectrum[0, l0w:l1w, :, :], axis=0)
+
+        pstrong = np.argwhere(polmap > P_TRESHOLD)
+        py = pstrong[:, 0]
+        px = pstrong[:, 1]
+        
+        (Nstokes, Nwave, Nscan, Npix) = self.spectrum.shape
+        spectrum_shft = np.zeros((Nstokes, Nwave, Nscan, Npix), dtype=np.float32)
+
+        Mij    = np.zeros(Nstokes, dtype=np.float64)
+        Mij[0] = 1.0
+        for i in range(1, Nstokes):
+            Mij[i] = np.mean(self.spectrum[i, c0:c1, :, :] / self.spectrum[0, c0:c1, :, :])
+            spectrum_shft[i, :, :, :] = self.spectrum[i, :, :, :] - Mij[i] * self.spectrum[0, :, :, :]
         
 
+        lindex = np.arange(Nwave).reshape([Nwave, 1, 1])
+
+        lcen = np.sum(np.sqrt(np.sum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)) * \
+                      lindex[l0c:l1c, :, :], axis=0) / \
+               np.sum(np.sqrt(np.sum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)), axis=0)
+        lshift = int(np.median(lcen)) - lcen
+
+        spectrum_shift = np.zeros(Nwave, dtype=np.float32)
+        for k in range(Npix):
+            for l in range(Nscan):
+                for m in range(Nstokes):
+                    spectrum_shift = shift(spectrum_shft[m, :, l, k], lshift[l, k], \
+                                           order=3, mode="nearest")
+                    spectrum_shft[m, :, l, k] = spectrum_shift
+
+
+        Qtmp = np.sum(spectrum_shft[1, l0c:l1c, py, px], axis=1)
+        Utmp = np.sum(spectrum_shft[2, l0c:l1c, py, px], axis=1)
+        Vtmp = np.sum(spectrum_shft[3, l0c:l1c, py, px], axis=1)
+
+        data_frame = pd.DataFrame({'SQ':Qtmp, 'SU':Utmp, 'SV':Vtmp}, \
+                                  columns=['SQ', 'SU', 'SV'])
+
+        regression = linear_model.LinearRegression()
+        regression.fit(data_frame[['SQ','SU']], data_frame['SV'])
+
+        a = regression.coef_[0]
+        b = regression.coef_[1]
+
+        # Make a corrected Stokes V for the determination of V->Q,U
+        # Use all profiles with strong polarization signal
+        
+        Qtmp = spectrum_shft[1, l0w:l1w, py, px]
+        Utmp = spectrum_shft[2, l0w:l1w, py, px]
+        Vtmp = spectrum_shft[3, l0w:l1w, py, px] - a*Qtmp - b*Utmp
+
+        # Determine the V->QU parameters
+        
+        c = np.nanmedian(np.nanmean(Qtmp*Vtmp, axis=1) / np.nanmean(Vtmp**2, axis=1) )
+        d = np.nanmedian(np.nanmean(Utmp*Vtmp, axis=1) / np.nanmean(Vtmp**2, axis=1) )
+
+
+        # Reconstruct Sanchez Almeida & Lites (1992) I->QUV cross talk matrix
+
+        iMM1b = np.array( [[ Mij[0], 0., 0., 0.],
+                           [-Mij[1], 1., 0., 0.],
+                           [-Mij[2], 0., 1., 0.],
+                           [-Mij[3], 0., 0., 1.]], dtype=np.float64)
+        MM1b = np.linalg.inv(iMM1b)
+
+        # Reconstruct the Kuhn et al (1994) QU<->V cross talk matrix
+
+        iMM2b = np.array([[1.,     0.,     0., 0.],
+                          [0., 1.+a*c,    c*b, -c],
+                          [0.,    a*d, 1.+b*d, -d],
+                          [0.,     -a,     -b, 1.]], dtype=np.float64)
+        MM2b = np.linalg.inv(iMM2b)
+
+        del spectrum_shft, Qtmp, Utmp, Vtmp
+        
+        # Apply the final sign correction to match the original data
+
+        iMM3b = np.array([[1., 0.,  0., 0.],
+                          [0., 1.,  0., 0.],
+                          [0., 0.,  1., 0.],
+                          [0., 0.,  0., 1.]], dtype=np.float64)
+        MM3b = np.linalg.inv(iMM3b)
+
+        MMb  = MM1b@MM2b@MM3b
+        iMMb = iMM3b@iMM2b@iMM1b
+
+        #make reconstructed data
+
+        spectrum_cal = np.zeros((Nstokes, Nwave, Nscan, Npix), dtype=np.float32)
+        spectrum_cal[:, :, :, :] = np.einsum('ij, jabc->iabc', iMMb, self.spectrum)
+
+        del self.spectrum
+        self.spectrum = spectrum_cal
+        
+        
 class ViSP_inversion:
 
-    def __init__(self, dataset_root, fits_directory, fiducial_arm_ID=3, Blanca_nodes=48):
+    def __init__(self, dataset_root, fits_directory, fiducial_arm_ID=3, \
+                 fiducial_pol_arm=fiducial_pol_ID, Blanca_nodes=48):
 
         if os.path.isdir(dataset_root):
             self.dataset_root = dataset_root
@@ -305,6 +503,8 @@ class ViSP_inversion:
         for arm in self.visp_arms:
             if arm.armID == fiducial_arm_ID:
                 self.fiducial_arm = arm
+            if arm.armID == fiducial_pol_ID:
+                self.fiducial_pol_arm = arm
 
         self.home_dir     = os.path.expanduser("~") 
         self.Blanca_nodes = Blanca_nodes
@@ -337,21 +537,20 @@ class ViSP_inversion:
         plt.savefig("wavelength_solution.pdf", format="pdf")
 
 
-        fig, ax = plt.subplots(ncols=1, nrows=len(self.visp_arms), \
-                               figsize=(7,10), tight_layout=True)
+        fig, ax = plt.subplots(ncols=1, nrows=len(self.visp_arms), figsize=(7,10))
         
         for i in range(len(self.visp_arms)):
             arm = self.visp_arms[i]
 
             (Nstokes, Nwave, Nscan, Npix) = np.shape(self.fiducial_arm.spectrum)
-            xarcsec = self.slit_step * np.arange(0, Nscan)
-            yarcsec = self.fiducial_arm.slit_sample * np.arange(0, Npix)
+            yarcsec = self.slit_step * np.arange(0, Nscan)
+            xarcsec = self.fiducial_arm.slit_sample * np.arange(0, Npix) * arm.Npix_avg
 
             reference_img = arm.spectrum[0, arm.continuum_index, :, :]
                 
             im = ax[i].imshow(reference_img, origin='lower', cmap="gray", 
                               vmin=0.55, vmax=1.2, \
-                              extent=[yarcsec[0], yarcsec[-1], xarcsec[0], xarcsec[-1]])
+                              extent=[xarcsec[0], xarcsec[-1], yarcsec[0], yarcsec[-1]])
             ax[i].set(ylabel='scan direction [arcsec]', xlabel='along slit [arcsec]', \
                       title=arm.spectrumID)
             fig.colorbar(im, label='continuum intensity', location='top', \
@@ -402,6 +601,10 @@ class ViSP_inversion:
                                           longitude[Nscan//2]**2) / sun_app_rad**2)
         print("Solar viewing angle: mu = {0:5.3f}".format(self.mu_fiducial))
 
+        for arm in self.visp_arms:
+            arm.mu = self.mu_fiducial
+
+
     def ViSP_align_arms(self):
 
         for arm in self.visp_arms:
@@ -428,65 +631,68 @@ class ViSP_inversion:
             arm.spectrum = spectrum_remap
             
         arm_pool.close()
-        
-        
-    def ViSP_write_data_fits(self):
-
-        Nscan_fid, Npix_fid = self.fiducial_arm.spectrum.shape[2:4]
-        
-        Npix_avg   = int(np.floor(self.slit_width / self.fiducial_arm.slit_sample))
-        Npix_rebin = Npix_fid // Npix_avg
-        last_pixel = Npix_avg * Npix_rebin
-        print("Npix_avg: {0}, Npix_rebin: {1}".format(Npix_avg, Npix_rebin))
 
         for arm in self.visp_arms:
+            arm.ViSP_get_rebin_params(self.fiducial_arm, self.slit_width)
 
-            filename  = "ViSP_" + arm.datasetID + "_" + arm.spectrumID + ".fits"
-            file_path = os.path.join(self.fits_directory, filename)
-            
-            Nstokes, Nwave = arm.spectrum.shape[0:2]
-            save_spectrum  = np.zeros((Nstokes, Nwave, Nscan_fid, Npix_rebin), dtype=np.float32)
-            
-            save_spectrum[:, :, :, :] = np.mean(np.reshape(arm.spectrum[:, :, :, 0:last_pixel], \
-                                                           (Nstokes, Nwave, Nscan_fid, \
-                                                            Npix_rebin, Npix_avg)), axis=4)
-
-            del arm.spectrum
-            arm.spectrum = save_spectrum
-            
-            arm.ViSP_calibrate(mu=self.mu_fiducial)
-            
-            hdu  = fits.PrimaryHDU(arm.spectrum)
-            hdul = fits.HDUList([hdu])
-            hdul.writeto(file_path, overwrite=True)
-
-
+        
     def ViSP_write_wavegrid(self):
         pass
     def ViSP_write_PSF(self):
         pass
-        
-    def ViSP_write(self):
 
-        self.ViSP_write_data_fits()
+
+    def ViSP_write_aux_files(self):
+
         self.ViSP_write_wavegrid()
         self.ViSP_write_PSF()
+
+
+    def ViSP_get_polarization_map(self):
+
+        stokes_I = self.fiducial_pol_arm.spectrum[0, :, :, ;]
+        stokes_V = self.fiducial_pol_arm.spectrum[3, :, :, ;]
+        Nwave    = stokes_I.shape[0]
+
+        self.fiducial_pol_map = np.sum(np.abs(stokes_V)/stokes_I, axis=0) / Nwave
+
         
-         
 def main():
 
-##    dataset_root = '/Users/han/Data/DKIST/id.136838.353289/'
-    dataset_root   = '/home/han/Data/DKIST/id.136838.527585/'
+    dataset_root   = '/home/han/Data/DKIST/id.136838.353289/'
     fits_directory = '/home/han/Data/DKIST/Fits_dir/'
+
+    fiducial_arm_ID = 3
+    fiducial_pol_ID = 1
     
-    inv = ViSP_inversion(dataset_root, fits_directory, fiducial_arm_ID=3)
+    inv = ViSP_inversion(dataset_root, fits_directory, \
+                         fiducial_arm_ID=fiducial_arm_ID, \
+                         fiducial_pol_ID=fiducial_pol_ID)
     
     inv.ViSP_slit_properties()
     inv.ViSP_solar_location()
-    inv.ViSP_align_arms()
-    inv.ViSP_show_arms()
     
-    inv.ViSP_write()
+    for arm in inv.visp_arms:
+        arm.ViSP_find_wavelength_solution()
+        arm.ViSP_read_arm_data()
+
+    inv.ViSP_align_arms()
+
+    for arm in inv.visp_arms:
+        arm.ViSP_rebin()
+
+    inv.get_polarization_map()
+        
+    for arm in inv.visp_arms:
+        arm.ViSP_calibrate_intensity(inv.fiducial_pol_map)
+        arm.ViSP_remove_crosstalk()
+        arm.ViSP_find_PSF(inv.fiducial_pol_map)
+
+        arm.ViSP_write_data_fits(fits_directory)
+        
+    inv.ViSP_write_aux_files()
+    
+    inv.ViSP_show_arms()
 
     
 if __name__ == "__main__":
