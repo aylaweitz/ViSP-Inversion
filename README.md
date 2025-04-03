@@ -21,7 +21,7 @@ aided by tools in the *ViSP_tools.py* package.
    are corrected.
 + Wavelength calibration, based on initial guess of the dispersion,
    and position of the deepest line in the spectral range.
-+ Determination of cosine of the heliocentric viewing angle \mu
++ Determination of cosine of the heliocentric viewing angle, \mu
 + Calibration of intensities based on Atlas, heliocentric angle and
    theoretical center-to-limb behavior.
 + Rebin of data to achieve as close as possible "square pixels",
