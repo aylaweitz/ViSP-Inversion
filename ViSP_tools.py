@@ -193,6 +193,20 @@ def consecutive(data, stepsize=1):
 
 
 @jit
+def remove_telluric_pix(stokes_I, j0, j1):
+
+    (Nwave, Nscan, Npix) = stokes_I.shape
+
+    for j in range(j0+1, j1-1, 1):
+        frac = (j1 - j) / (j1 - j0)
+        for l in range(Nscan):
+            for k in range(Npix):
+                stokes_I[j, l, k] = \
+                    frac * stokes_I[j0, l, k] + \
+                    (1.0 - frac) * stokes_I[j1, l, k]
+                    
+
+@jit
 def remove_hl_pix(spectrum, j0, j1):
 
     (Nstokes, Nwave, Nscan, Npix) = spectrum.shape
@@ -203,8 +217,8 @@ def remove_hl_pix(spectrum, j0, j1):
                 for j in range(j0+1, j1-1, 1):
                     frac = (j1 - j) / (j1 - j0)
                     spectrum[n, m, i, j] = \
-                        (1.0 - frac) * spectrum[n, m, i, j0] + \
-                        frac * spectrum[n, m, i, j1]
+                        frac * spectrum[n, m, i, j0] + \
+                        (1.0 - frac) * spectrum[n, m, i, j1]
 
 
 class hairline:
@@ -289,7 +303,6 @@ def psf_broad(wavelength, spectrum, FWHM, mode="Gaussian"):
 
   conv = np.reshape(np.abs(np.fft.ifft(np.fft.fft(spec_equid) * \
                                        np.fft.fft(kernel))), Nequid)
-  print(np.shape(kernel), np.shape(conv))
   conv_roll = np.roll(conv, Nequid//2)
 
   f2 = interpolate.interp1d(wave_equid, conv_roll)
@@ -449,7 +462,7 @@ def air_to_vacuum(lambda_air):
 ##  --- Routines for interpolation by cubic convolution.
 ##
 ##      Author:        Han Uitenbroek  (huitenbroek@nso.edu)
-##       Last modified: Mon Feb  3 13:44:25 2025 --
+##       Last modified: Thu Apr  3 09:40:07 2025 --
 ##
 ##  See: R.G. Keys, 1981, in IEEE Trans. Acoustics, Speech,
 ##        and Signal Processing, Vol. 29, pp. 1153-1160.

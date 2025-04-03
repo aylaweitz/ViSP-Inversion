@@ -38,9 +38,10 @@ class ViSP_arm:
 
     def ViSP_analyze_asdf(self):
 
-        self.asdf_file = glob.glob(os.path.join(self.dataset_path, '*.asdf'))[0]
-        self.dataset   = dkist.load_dataset(self.asdf_file)
-        
+        self.asdf_file   = glob.glob(os.path.join(self.dataset_path, '*.asdf'))[0]
+        self.dataset     = dkist.load_dataset(self.asdf_file)
+        self.transp_data = np.transpose(self.dataset.data, axes=(0, 2, 1, 3))
+
         self.datasetID  = self.dataset.headers[0]["DSETID"]
         self.spectrumID = self.dataset.headers[0]["WAVEBAND"]
         self.armID      = self.dataset.headers[0]["VSPARMID"]
@@ -93,77 +94,39 @@ class ViSP_arm:
                  clv_file = "CaII_8542_clv.fits"
 
         clv_file_path = os.path.join(self.aux_data_dir, clv_file)
-        self.clv_interp = self.ViSP_read_clv()
-
-    def ViSP_fit_line_positions(self, waves_guess)
-
-        ATL_RANGE = 2.0
-        DELTA_LAM = 0.01
-
-        Nlambda = waves_guess.shape[0]
-        
-        fts = satlas()
-        self.lambda_atlas, intensity, continuum = fts.nmsiatlas(ref_lambda - ATL_RANGE,\
-                                                                ref_lambda + ATL_RANGE)
-        self.norm_atlas = intensity / continuum   
-        Nlines          = len(lines_arm)
-        wave_positions  = np.zeros(Nlines, dtype=np.float64)
-        index_positions = np.zeros(Nlines, dtype=np.float64)
-
-        n = 0
-        for key, label in lines_arm.items():
-            values  = np.array([key - DELTA_LAM, key + DELTA_LAM])
-            indices = vt.table_invert(self.lambda_atlas, values, mode="index")
-
-            wave_positions[n] = vt.find_parmin(self.lambda_atlas[indices[0]:indices[1]],
-                                               self.norm_atlas[indices[0]:indices[1]])
-            n += 1
-
-        n = 0
-        for key, label in lines_arm.items():
-            values  = np.array([key - DELTA_LAM, key + DELTA_LAM])
-            indices = vt.table_invert(wave_guess, values, mode="index")
-
-            wave_min = vt.find_parmin(wave_guess[indices[0]:indices[1]],
-                                      norm_spectrum[indices[0]:indices[1]])
-            index_positions[n] = vt.table_invert(wave_guess, wave_min, mode="effective")[0]
-
-            n += 1
-     
-        coefficients = np.polyfit(index_positions, wave_positions, 2)
-        poly         = np.poly1d(coefficients)
-
-        return poly(np.arange(Nlambda))
+        self.clv_interp = self.ViSP_read_clv(clv_file_path)
 
 
     def ViSP_find_wavelength_solution(self):
 
-        POL_THRESHOLD = 0.02
+        ATL_RANGE     = 2.0
+        DELTA_LAM     = 0.01
+        POL_THRESHOLD = 0.002
         
-        stokes_I = self.dataset.data[0, :, :, :].compute()
-        
-        self.circ_pol_map = np.sum(np.abs(self.dataset.data[3, :, :, :]) / \
-                                   stokes_I], axis=2) / Nwave
-        self.circ_pol_map.compute()
-        quiet = np.where(self.circ_pol_map < POL_THRESHOLD)
+        stokes_I = self.transp_data[0, :, :, :].compute()
+        Nwave    = stokes_I.shape[0]
 
-        self.avg_spectrum    = np.mean(stokes_I[:, quiet[0], quiet[1]], axis=0)
+        self.avg_spectrum    = np.mean(stokes_I, axis=(1, 2))
         self.continuum_index = np.argmax(self.avg_spectrum)
+        norm_spectrum        = self.avg_spectrum / np.max(self.avg_spectrum)
+        ref_index            = np.argmin(self.avg_spectrum)
+        ref_lambda           = self.DeSIRe_line.lambda0
 
-        norm_spectrum = self.avg_spectrum / np.max(self.avg_spectrum)
-        ref_index     = np.argmin(self.avg_spectrum)
-        Nlambda       = self.Nlambda
-        ref_lambda    = self.DeSIRe_line.lambda0
+        fts = satlas()
+        self.lambda_atlas, intensity, continuum = fts.nmsiatlas(ref_lambda - ATL_RANGE,\
+                                                                ref_lambda + ATL_RANGE)
+        self.norm_atlas = intensity / continuum   
 
         match self.spectrumID:
              case "Fe I (630.25 nm)":
                  dispersion = 1.281E-03
 
-                 lines_arm    = {629.77927: 'Fe I', 629.9582: 'Zr I', \
-                                  630.068: 'Hf I', 630.15012: 'Fe I', \
-                                  630.24936: 'Fe I', 630.3755: 'Ti I', \
-                                  630.4325: 'Zr I', 630.5275: 'Fe II'}
-                 telluric_arm = [[629.833, 629.854], [629.913, 629.930], \
+                 lines    = {629.77927: 'Fe I', 629.9582: 'Zr I', \
+                             630.068: 'Hf I', 630.15012: 'Fe I', \
+                             630.24936: 'Fe I', 630.3755: 'Ti I', \
+                             630.4325: 'Zr I', 630.5275: 'Fe II'}
+                 
+                 self.telluric = [[629.833, 629.854], [629.913, 629.930], \
                                   [630.189, 630.209], [630.266, 630.286], \
                                   [630.568, 630.588], [630.643, 630.666]]
 
@@ -174,9 +137,10 @@ class ViSP_arm:
              case "Na I D1 (589.59 nm)":
                  dispersion   = 1.4E-3
 
-                 lines_arm    = {588.9973: 'Na I', 589.1175: 'Fe I', \
-                                 589.2883: 'Ni I', 589.5940: 'Na I'}
-                 telluric_arm = [[589.157, 589.176], [589.231, 589.250]]
+                 lines    = {588.9973: 'Na I', 589.1175: 'Fe I', \
+                             589.2883: 'Ni I', 589.5940: 'Na I'}
+                 
+                 self.telluric = [[589.157, 589.176], [589.231, 589.250]]
 
                  self.lambda_blu = 588.653
                  self.lambda_red = 589.886
@@ -185,20 +149,48 @@ class ViSP_arm:
              case "Ca II (854.21 nm)":
                  dispersion   = 1.873E-03
 
-                 lines_arm    = {853.6163: 'Si I', 853.80147: 'Fe I', 854.21: 'Ca II',\
-                                 854.8079: 'Ti I'}
-                 telluric_arm = [[853.462, 853.493], [854.068, 854.092], [854.605, 854.632]]
+                 lines    = {853.6163: 'Si I', 853.80147: 'Fe I', 854.21: 'Ca II',\
+                             854.8079: 'Ti I'}
+                 
+                 self.telluric = [[853.462, 853.493], [854.068, 854.092], [854.605, 854.632]]
 
                  self.lambda_blu = 853.232
                  self.lambda_red = 855.193
                  self.continuum_interval = [self.lambda_blu, 853.300]
-                 
-        waves_guess = ref_lambda + dispersion * \
-            (np.arange(Nlambda, dtype=np.float64) - ref_index)
 
+
+        Nlines          = len(lines)
+        wave_positions  = np.zeros(Nlines, dtype=np.float64)
+        index_positions = np.zeros(Nlines, dtype=np.float64)
+        waves_guess     = ref_lambda + dispersion * (np.arange(Nwave, dtype=np.float64) - ref_index)
+
+
+        n = 0
+        for key, label in lines.items():
+            values  = np.array([key - DELTA_LAM, key + DELTA_LAM])
+            indices = vt.table_invert(self.lambda_atlas, values, mode="index")
+
+            wave_positions[n] = vt.find_parmin(self.lambda_atlas[indices[0]:indices[1]],
+                                               self.norm_atlas[indices[0]:indices[1]])
+            n += 1
+
+        n = 0
+        for key, label in lines.items():
+            values  = np.array([key - DELTA_LAM, key + DELTA_LAM])
+            indices = vt.table_invert(waves_guess, values, mode="index")
+
+            wave_min = vt.find_parmin(waves_guess[indices[0]:indices[1]],
+                                      norm_spectrum[indices[0]:indices[1]])
+            index_positions[n] = vt.table_invert(waves_guess, wave_min, mode="effective")[0]
+
+            n += 1
+     
+        coefficients = np.polyfit(index_positions, wave_positions, 2)
+        poly         = np.poly1d(coefficients)
+        
         #-# Store the calibrated wavelengths for the current arm
         
-        self.calib_waves = self.ViSP_fit_line_positions(waves_guess)
+        self.calib_waves = poly(np.arange(Nwave))
 
 
     def ViSP_broadened_atlas(self, waves, FWHM, wave_offset):
@@ -210,22 +202,31 @@ class ViSP_arm:
         mu_wave_grid = np.zeros((Nwave, 2), dtype=np.float32)
         mu_wave_grid[:, 0] = self.mu
         mu_wave_grid[:, 1] = waves
-        atlas_int *= vt.LimbDark(self.DeSIRe_line.lambda0, self.mu) * self.clv_interp(mu_wave_grid)
+        atlas_int *= (vt.LimbDark(self.DeSIRe_line.lambda0, self.mu) * self.clv_interp(mu_wave_grid))
         
         return vt.psf_broad(waves, atlas_int, FWHM, mode="Gaussian")
 
 
     def ViSP_find_PSF(self, pol_map):
 
-        POL_THRESHOLD = 0.01
+        POL_THRESHOLD = 0.005
 
         quiet = np.where(pol_map < POL_THRESHOLD)
-        avg_quiet_spectrum = np.mean(self.spectrum[0, :, quiet[0], quiet[1]), axis=0)
+        avg_quiet_spectrum = np.mean(self.spectrum[0, :, quiet[0], quiet[1]], axis=0)
         
-        popt, pcov = curve_fit(self.ViSP_broadened_atlas, self.calib_waves, avg_quiet_spectrum) 
+        for limits in self.telluric:
+            j0, j1 = vt.table_invert(self.lambda_atlas, limits, mode="index")
+
+            Nwave_atlas = len(self.lambda_atlas)
+            stokes_I = np.reshape(self.norm_atlas, shape=(Nwave_atlas, 1, 1))
+
+            vt.remove_telluric_pix(stokes_I, j0, j1)
+        
+        popt, pcov = curve_fit(self.ViSP_broadened_atlas, self.calib_waves, \
+                               avg_quiet_spectrum, p0=[0.004, 0.0]) 
 
         self.FWHM = popt[0]
-        self.calib_waves += popt[1]
+        self.calib_waves -= popt[1]
 
         
     def ViSP_read_arm_data(self):
@@ -233,8 +234,7 @@ class ViSP_arm:
         limits = vt.table_invert(self.calib_waves, np.array([self.lambda_blu, self.lambda_red]), \
                                  mode="index")
         
-        transposed_set = np.transpose(self.dataset.data, axes=(0, 2, 1, 3))
-        self.spectrum  = transposed_set[:, limits[0]:limits[1], 100:175, :].compute()
+        self.spectrum = self.transp_data[:, limits[0]:limits[1], 100:175, :].compute()
 
         self.calib_waves     = self.calib_waves[limits[0]:limits[1]]
         self.avg_spectrum    = self.avg_spectrum[limits[0]:limits[1]]
@@ -296,9 +296,9 @@ class ViSP_arm:
         return spectrum_remap
 
     
-    def ViSP_read_clv(self):
+    def ViSP_read_clv(self, clv_file_path):
 
-        hdul = fits.open(self.clv_file_path)
+        hdul = fits.open(clv_file_path)
 
         clv   = hdul[0].data
         xmu   = hdul[1].data
@@ -313,23 +313,22 @@ class ViSP_arm:
         
     def ViSP_calibrate_intensity(self, pol_map):
 
-        POL_THRESHOLD = 0.01
+        POL_THRESHOLD = 0.005
         
-        (Nstokes, Nwave, Nscan, Npix) = self.spectrum.shape
-
-        limbdark = vt.LimbDark(self.DeSIRe_line.lambda0, self.mu)
-        
-        lambda_cont      = self.calib_waves[self.continuum_index]
-        index_cont_atlas = vt.table_invert(self.lambda_atlas, lambda_cont, mode="index")
-        cont_atlas       = self.norm_atlas[index_cont_atlas]
-
         quiet = np.where(pol_map < POL_THRESHOLD)
-        avg_continuum = np.mean(self.spectrum[0, self.continuum_index, quiet[0], quiet[1]])
 
-        clv_factor = self.clv_interp([self.mu, lambda_cont])[0]
-        print(clv_factor, lambda_cont, self.mu)
+        avg_quiet_spectrum = np.mean(self.spectrum[0, :, quiet[0], quiet[1]], axis=0)
+        continuum_index    = np.argmax(avg_quiet_spectrum)
+        quiet_continuum    = avg_quiet_spectrum[continuum_index]
+        lambda_continuum   = self.calib_waves[continuum_index]
+
+        f = interpolate.interp1d(self.lambda_atlas, self.norm_atlas)
+        atlas_continuum = f(lambda_continuum)
         
-        normalization  = (limbdark * cont_atlas * clv_factor) / avg_continuum
+        limbdark   = vt.LimbDark(self.DeSIRe_line.lambda0, self.mu)
+        clv_factor = self.clv_interp([self.mu, lambda_continuum])[0]
+        
+        normalization  = (limbdark * clv_factor) * (atlas_continuum / quiet_continuum)
         self.spectrum *= normalization
 
 
@@ -370,118 +369,138 @@ class ViSP_arm:
 
 
     def ViSP_remove_crosstalk(self, mode="Sanchez_Kuhn"):
-       
-        c0, c1 = vt.table_invert(self.calib_waves, self.continuum_interval, mode="index")
- 
-        DELTA_CORE = 5
-        DELTA_WING = 20
-        P_TRESHOLD = 0.05
+
+        match mode:
+            
+            case "Sanchez_Kuhn":
+                
+                c0, c1 = vt.table_invert(self.calib_waves, self.continuum_interval, mode="index")
         
-        index0   = vt.table_invert(self.calib_waves, self.DeSIRe_line.lambda0, mode="index")[0]
-        l0c, l1c = index0 - DELTA_CORE, index0 + DELTA_CORE
-        l0w, l1w = index0 - DELTA_WING, index0 + DELTA_WING
+                DELTA_CORE = 5
+                DELTA_WING = 20
+                P_TRESHOLD = 0.05
         
-        polmap = np.max(np.sqrt(np.sum(self.spectrum[1:, l0w:l1w, :, :]**2, axis=0)) / \
-                        self.spectrum[0, l0w:l1w, :, :], axis=0)
-
-        pstrong = np.argwhere(polmap > P_TRESHOLD)
-        py = pstrong[:, 0]
-        px = pstrong[:, 1]
+                index0   = vt.table_invert(self.calib_waves, self.DeSIRe_line.lambda0, mode="index")[0]
+                l0c, l1c = index0 - DELTA_CORE, index0 + DELTA_CORE
+                l0w, l1w = index0 - DELTA_WING, index0 + DELTA_WING
         
-        (Nstokes, Nwave, Nscan, Npix) = self.spectrum.shape
-        spectrum_shft = np.zeros((Nstokes, Nwave, Nscan, Npix), dtype=np.float32)
+                polmap = np.max(np.sqrt(np.sum(self.spectrum[1:, l0w:l1w, :, :]**2, axis=0)) / \
+                                self.spectrum[0, l0w:l1w, :, :], axis=0)
 
-        Mij    = np.zeros(Nstokes, dtype=np.float64)
-        Mij[0] = 1.0
-        for i in range(1, Nstokes):
-            Mij[i] = np.mean(self.spectrum[i, c0:c1, :, :] / self.spectrum[0, c0:c1, :, :])
-            spectrum_shft[i, :, :, :] = self.spectrum[i, :, :, :] - Mij[i] * self.spectrum[0, :, :, :]
+                pstrong = np.argwhere(polmap >= P_TRESHOLD)
+                py = pstrong[:, 0]
+                px = pstrong[:, 1]
         
+                (Nstokes, Nwave, Nscan, Npix) = self.spectrum.shape
+                spectrum_shft = np.zeros((Nstokes, Nwave, Nscan, Npix), dtype=np.float32)
 
-        lindex = np.arange(Nwave).reshape([Nwave, 1, 1])
+                Mij    = np.zeros(Nstokes, dtype=np.float64)
+                Mij[0] = 1.0
+                for i in range(1, Nstokes):
+                    Mij[i] = np.mean(self.spectrum[i, c0:c1, :, :] / self.spectrum[0, c0:c1, :, :])
+                    spectrum_shft[i, :, :, :] = self.spectrum[i, :, :, :] - Mij[i] * self.spectrum[0, :, :, :]
+            
 
-        lcen = np.sum(np.sqrt(np.sum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)) * \
-                      lindex[l0c:l1c, :, :], axis=0) / \
-               np.sum(np.sqrt(np.sum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)), axis=0)
-        lshift = int(np.median(lcen)) - lcen
+                lindex = np.arange(Nwave).reshape([Nwave, 1, 1])
+                    
+                lcen = np.sum(np.sqrt(np.sum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)) * \
+                              lindex[l0c:l1c, :, :], axis=0) / \
+                              np.sum(np.sqrt(np.sum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)), axis=0)
+                lshift = int(np.median(lcen)) - lcen
 
-        spectrum_shift = np.zeros(Nwave, dtype=np.float32)
-        for k in range(Npix):
-            for l in range(Nscan):
-                for m in range(Nstokes):
-                    spectrum_shift = shift(spectrum_shft[m, :, l, k], lshift[l, k], \
-                                           order=3, mode="nearest")
-                    spectrum_shft[m, :, l, k] = spectrum_shift
+                spectrum_shift = np.zeros(Nwave, dtype=np.float32)
+                for k in range(Npix):
+                    for l in range(Nscan):
+                        for m in range(Nstokes):
+                            spectrum_shift = shift(spectrum_shft[m, :, l, k], lshift[l, k], \
+                                                   order=3, mode="nearest")
+                            spectrum_shft[m, :, l, k] = spectrum_shift
 
 
-        Qtmp = np.sum(spectrum_shft[1, l0c:l1c, py, px], axis=1)
-        Utmp = np.sum(spectrum_shft[2, l0c:l1c, py, px], axis=1)
-        Vtmp = np.sum(spectrum_shft[3, l0c:l1c, py, px], axis=1)
+                Qtmp = np.sum(spectrum_shft[1, l0c:l1c, py, px], axis=1)
+                Utmp = np.sum(spectrum_shft[2, l0c:l1c, py, px], axis=1)
+                Vtmp = np.sum(spectrum_shft[3, l0c:l1c, py, px], axis=1)
 
-        data_frame = pd.DataFrame({'SQ':Qtmp, 'SU':Utmp, 'SV':Vtmp}, \
-                                  columns=['SQ', 'SU', 'SV'])
+                data_frame = pd.DataFrame({'SQ':Qtmp, 'SU':Utmp, 'SV':Vtmp}, \
+                                          columns=['SQ', 'SU', 'SV'])
 
-        regression = linear_model.LinearRegression()
-        regression.fit(data_frame[['SQ','SU']], data_frame['SV'])
+                regression = linear_model.LinearRegression()
+                regression.fit(data_frame[['SQ','SU']], data_frame['SV'])
+                                
+                a = regression.coef_[0]
+                b = regression.coef_[1]
 
-        a = regression.coef_[0]
-        b = regression.coef_[1]
-
-        # Make a corrected Stokes V for the determination of V->Q,U
-        # Use all profiles with strong polarization signal
+                # Make a corrected Stokes V for the determination of V->Q,U
+                # Use all profiles with strong polarization signal
         
-        Qtmp = spectrum_shft[1, l0w:l1w, py, px]
-        Utmp = spectrum_shft[2, l0w:l1w, py, px]
-        Vtmp = spectrum_shft[3, l0w:l1w, py, px] - a*Qtmp - b*Utmp
+                Qtmp = spectrum_shft[1, l0w:l1w, py, px]
+                Utmp = spectrum_shft[2, l0w:l1w, py, px]
+                Vtmp = spectrum_shft[3, l0w:l1w, py, px] - a*Qtmp - b*Utmp
 
-        # Determine the V->QU parameters
+                # Determine the V->QU parameters
+                                
+                c = np.nanmedian(np.nanmean(Qtmp*Vtmp, axis=1) / np.nanmean(Vtmp**2, axis=1) )
+                d = np.nanmedian(np.nanmean(Utmp*Vtmp, axis=1) / np.nanmean(Vtmp**2, axis=1) )
+
+
+                # Reconstruct Sanchez Almeida & Lites (1992) I->QUV cross talk matrix
+                                
+                iMM1b = np.array( [[ Mij[0], 0., 0., 0.],
+                                   [-Mij[1], 1., 0., 0.],
+                                   [-Mij[2], 0., 1., 0.],
+                                   [-Mij[3], 0., 0., 1.]], dtype=np.float64)
+                MM1b = np.linalg.inv(iMM1b)
+
+                # Reconstruct the Kuhn et al (1994) QU<->V cross talk matrix
+
+                iMM2b = np.array([[1.,     0.,     0., 0.],
+                                  [0., 1.+a*c,    c*b, -c],
+                                  [0.,    a*d, 1.+b*d, -d],
+                                  [0.,     -a,     -b, 1.]], dtype=np.float64)
+                MM2b = np.linalg.inv(iMM2b)
+
+                del spectrum_shft, Qtmp, Utmp, Vtmp
         
-        c = np.nanmedian(np.nanmean(Qtmp*Vtmp, axis=1) / np.nanmean(Vtmp**2, axis=1) )
-        d = np.nanmedian(np.nanmean(Utmp*Vtmp, axis=1) / np.nanmean(Vtmp**2, axis=1) )
+                # Apply the final sign correction to match the original data
 
+                iMM3b = np.array([[1., 0.,  0., 0.],
+                                  [0., 1.,  0., 0.],
+                                  [0., 0.,  1., 0.],
+                                  [0., 0.,  0., 1.]], dtype=np.float64)
+                MM3b = np.linalg.inv(iMM3b)
+                                
+                MMb  = MM1b@MM2b@MM3b
+                iMMb = iMM3b@iMM2b@iMM1b
+                                
+                #make reconstructed data
 
-        # Reconstruct Sanchez Almeida & Lites (1992) I->QUV cross talk matrix
+                spectrum_cal = np.zeros((Nstokes, Nwave, Nscan, Npix), dtype=np.float32)
+                spectrum_cal[:, :, :, :] = np.einsum('ij, jabc->iabc', iMMb, self.spectrum)
 
-        iMM1b = np.array( [[ Mij[0], 0., 0., 0.],
-                           [-Mij[1], 1., 0., 0.],
-                           [-Mij[2], 0., 1., 0.],
-                           [-Mij[3], 0., 0., 1.]], dtype=np.float64)
-        MM1b = np.linalg.inv(iMM1b)
-
-        # Reconstruct the Kuhn et al (1994) QU<->V cross talk matrix
-
-        iMM2b = np.array([[1.,     0.,     0., 0.],
-                          [0., 1.+a*c,    c*b, -c],
-                          [0.,    a*d, 1.+b*d, -d],
-                          [0.,     -a,     -b, 1.]], dtype=np.float64)
-        MM2b = np.linalg.inv(iMM2b)
-
-        del spectrum_shft, Qtmp, Utmp, Vtmp
+                del self.spectrum
+                self.spectrum = spectrum_cal
         
-        # Apply the final sign correction to match the original data
+            case "I->QUV-only":
+                pass
 
-        iMM3b = np.array([[1., 0.,  0., 0.],
-                          [0., 1.,  0., 0.],
-                          [0., 0.,  1., 0.],
-                          [0., 0.,  0., 1.]], dtype=np.float64)
-        MM3b = np.linalg.inv(iMM3b)
 
-        MMb  = MM1b@MM2b@MM3b
-        iMMb = iMM3b@iMM2b@iMM1b
+    def ViSP_remove_telluric(self):
 
-        #make reconstructed data
+        for limits in self.telluric:
+            j0, j1 = vt.table_invert(self.calib_waves, limits, mode="index")
 
-        spectrum_cal = np.zeros((Nstokes, Nwave, Nscan, Npix), dtype=np.float32)
-        spectrum_cal[:, :, :, :] = np.einsum('ij, jabc->iabc', iMMb, self.spectrum)
+            stokes_I = self.spectrum[0, :, :, :]
+            vt.remove_telluric_pix(stokes_I, j0, j1)
 
-        del self.spectrum
-        self.spectrum = spectrum_cal
-        
-        
+
+    def ViSP_get_drift(self):
+        pass
+
+            
 class ViSP_inversion:
 
     def __init__(self, dataset_root, fits_directory, fiducial_arm_ID=3, \
-                 fiducial_pol_arm=fiducial_pol_ID, Blanca_nodes=48):
+                 fiducial_pol_ID=1, Blanca_nodes=48):
 
         if os.path.isdir(dataset_root):
             self.dataset_root = dataset_root
@@ -650,8 +669,8 @@ class ViSP_inversion:
 
     def ViSP_get_polarization_map(self):
 
-        stokes_I = self.fiducial_pol_arm.spectrum[0, :, :, ;]
-        stokes_V = self.fiducial_pol_arm.spectrum[3, :, :, ;]
+        stokes_I = self.fiducial_pol_arm.spectrum[0, :, :, :]
+        stokes_V = self.fiducial_pol_arm.spectrum[3, :, :, :]
         Nwave    = stokes_I.shape[0]
 
         self.fiducial_pol_map = np.sum(np.abs(stokes_V)/stokes_I, axis=0) / Nwave
@@ -659,7 +678,8 @@ class ViSP_inversion:
         
 def main():
 
-    dataset_root   = '/home/han/Data/DKIST/id.136838.353289/'
+    
+    dataset_root   = '/home/han/Data/DKIST/id.136838.527585/'
     fits_directory = '/home/han/Data/DKIST/Fits_dir/'
 
     fiducial_arm_ID = 3
@@ -680,8 +700,10 @@ def main():
 
     for arm in inv.visp_arms:
         arm.ViSP_rebin()
-
-    inv.get_polarization_map()
+        arm.ViSP_get_drift()
+        arm.ViSP_remove_telluric()
+        
+    inv.ViSP_get_polarization_map()
         
     for arm in inv.visp_arms:
         arm.ViSP_calibrate_intensity(inv.fiducial_pol_map)
