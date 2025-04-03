@@ -39,4 +39,4 @@ as a function of 100 mu values. This is used to estimate the pseudo continuum
 in cases where the observed wavelength grid does not reach the actual continuum 
 e.g., in the case of Ca II 854.2), and to aid in the stimate of the spectral PSF.
 
-Mar  7 2025 
+Apr 3,  2025 
