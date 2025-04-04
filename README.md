@@ -59,4 +59,14 @@ You may also want to install the jupyter package, to make plots, run tests.
 
 + conda install -c jupyter
 
+The main set of routines *ViSP_inversion.py* depends on routines in the file ViSP_tools.py.
+You will have to make this file visble to python by including the path to it in your
+*PYTHONPATH* environment variable:
+
++ export PYTHONPATH={$HOME}/your/ViSP_package/directory
+
+### 2.4 Installing the DeSIRe inversion code
+
+Information yet to come.
+
 + Apr 3,  2025 
