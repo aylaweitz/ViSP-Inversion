@@ -346,42 +346,81 @@ class DeSIRe_line:
         self.Ei      = Ei
         self.loggf   = loggf
         self.Si      = (mi - 1) / 2
-        self.Li      = orbits[oi]
         self.Ji      = Ji
         self.Sj      = (mj - 1) / 2 
-        self.Lj      = orbits[oj]
         self.Ji      = Jj
 
-        self.indices = None
+        self.couplingi = 'LS'
+        self.couplingj = 'LS'
+        
+        try:
+            self.Li = orbits[oi]
+        except KeyError:
+            self.couplingi = 'nonLS'
+            self.labeli = oi
 
+        try:
+            self.Lj = orbits[oj]
+        except KeyError:
+            self.couplingj = 'nonLS'
+            self.labelj = oj
+
+            
     @classmethod
     def get_list(cls):
 
         list = []
+        ## 0
         list.append(DeSIRe_line(1,  'CA', 2, 396.8469,   0.0000, \
                                 -0.16596,  2, 'S', 0.5, 2, 'P', 0.5))
+        ## 1
         list.append(DeSIRe_line(2,  'CA', 2, 399.3663,   0.0000, \
                                 -0.13399,  2, 'S', 0.5, 2, 'P', 1.5))
+        ## 2
         list.append(DeSIRe_line(3,  'CA', 2, 849.8023,   1.6924, \
                                 -1.31194,  2, 'D', 1.5, 2, 'P', 1.5))
+        ## 3
         list.append(DeSIRe_line(4,  'CA', 2, 854.2091,   1.7000, \
                                 -0.36199,  2, 'D', 2.5, 2, 'P', 1.5))
+        ## 4
         list.append(DeSIRe_line(5,  'CA', 2, 866.2141,   1.6924, \
                                 -0.62299,  2, 'D', 1.5, 2, 'P', 0.5))
+        ## 5
         list.append(DeSIRe_line(6,  'MG', 1, 518.36042,  2.7166, \
                                 -0.164309, 3, 'P', 2.0, 3, 'S', 1.0))
+        ## 6
         list.append(DeSIRe_line(7,  'MG', 1, 517.26843,  2.7166, \
                                 -0.38616,  3, 'P', 1.0, 3, 'S', 1.0))
+        ## 7
         list.append(DeSIRe_line(8,  'MG', 1, 516.73219,  2.7166, \
                                 -0.863279, 3, 'P', 0.0, 3, 'S', 1.0))
+        ## 8
         list.append(DeSIRe_line(9,  'NA', 1, 588.995095, 0.0000, \
                                  0.10106,  2, 'S', 0.5, 2, 'P', 1.5))
+        ## 9
         list.append(DeSIRe_line(10, 'NA', 1, 589.592424, 0.0000, \
                                 -0.18402,  2, 'S', 0.5, 2, 'P', 0.5))
+        ## 10
         list.append(DeSIRe_line(23, 'FE', 1, 630.15012, 3.654, \
                                 -0.718,    5, 'P', 2.0, 5, 'D', 2.0))
+        ## 11
         list.append(DeSIRe_line(24, 'FE', 1, 630.24936, 3.686, \
                                 -1.131,    5, 'P', 1.0, 5, 'D', 0.0))
+        ## 12
+        list.append(DeSIRe_line(33, 'SI', 1, 853.6164,  6.1808, \
+                                -0.910,    3, 'F', 2.0, 2, '(2P1.5)f2k)', 3.0))
+        ## 13
+        list.append(DeSIRe_line(34, 'FE', 1, 853.8015,  4.9130, \
+                                -1.400,    5, 'D', 4.0, 7, 'G', 4.0))
+        ## 14
+        list.append(DeSIRe_line(35, 'TI', 1, 854.8088,  1.8732, \
+                                -1.187,    3, 'G', 3.0, 3, 'F', 2.0))
+        ## 15
+        list.append(DeSIRe_line(36, 'CR', 1, 854.8851,  2.7088, \
+                                -2.066,    5, 'P', 2.0, 5, 'D', 2.0))
+        ## 16
+        list.append(DeSIRe_line(37, 'SI', 1, 855.0353,  6.2227, \
+                                -1.480,    1, 'D', 2.0, 5, '{1.5P0.5s}', 1.0))
         return list
 
 
@@ -462,7 +501,7 @@ def air_to_vacuum(lambda_air):
 ##  --- Routines for interpolation by cubic convolution.
 ##
 ##      Author:        Han Uitenbroek  (huitenbroek@nso.edu)
-##       Last modified: Thu Apr  3 09:40:07 2025 --
+##       Last modified: Fri Apr  4 10:05:24 2025 --
 ##
 ##  See: R.G. Keys, 1981, in IEEE Trans. Acoustics, Speech,
 ##        and Signal Processing, Vol. 29, pp. 1153-1160.

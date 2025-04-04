@@ -83,14 +83,17 @@ class ViSP_arm:
         match self.spectrumID:
              case "Fe I (630.25 nm)":
                  self.DeSIRe_line = DeSIRe_line_list[10]
+                 self.blends      = [DeSIRe_line_list[11]]
                  clv_file = "FeI_6302_clv.fits"
 
              case "Na I D1 (589.59 nm)":
                  self.DeSIRe_line = DeSIRe_line_list[8]
+                 self.blends      = [DeSIRe_line_list[9]]
                  clv_file = "NaI_5896_clv.fits"
                  
              case "Ca II (854.21 nm)":
                  self.DeSIRe_line = DeSIRe_line_list[3]
+                 self.blends      = DeSIRe_line_list[12:17]
                  clv_file = "CaII_8542_clv.fits"
 
         clv_file_path = os.path.join(self.aux_data_dir, clv_file)
@@ -655,16 +658,95 @@ class ViSP_inversion:
             arm.ViSP_get_rebin_params(self.fiducial_arm, self.slit_width)
 
         
-    def ViSP_write_wavegrid(self):
-        pass
-    def ViSP_write_PSF(self):
-        pass
+    def ViSP_write_wavegrid(self, fits_directory):
+
+        NM_TO_ANGSTROM = 10
+        MILLI          = 1.0E-3
+
+        GRID_FORMAT = '{:s}              :      {:13.5f},     {:9.5f},      {:s}   \n'
+        SEPARATOR   = '----------------------------------------------------------------------------\n'
+
+        PREAMBLE    = "IMPORTANT: a) All items must be separated by commas.\n" + \
+                      "b) The first six characters of the last line\n"  + \
+                      "in the header (if any) must contain the symbol ---\n\n" + \
+                      "Line and blends indices :   Initial lambda     Step       Final lambda\n" + \
+                      "(in this order)                  (mA)          (mA)          (mA)\n"
+
+        
+        wavegrid_filename = "wave"
+        for arm in self.visp_arms:
+            wavegrid_filename += "_" + arm.datasetID
+        wavegrid_filename += ".grid"
+
+        wavegrid_filepath = os.path.join(fits_directory, wavegrid_filename)
+
+        data = []
+        data.append(PREAMBLE)
+        data.append(SEPARATOR)
+
+        for arm in self.visp_arms:
+
+            lineID_string = '{:d}'.format(arm.DeSIRe_line.ID)
+            for blend in arm.blends:
+                lineID_string += ',{:d}'.format(blend.ID)
+
+            wave_step  = np.mean(np.diff(arm.calib_waves)) * \
+                            NM_TO_ANGSTROM / MILLI
+            wave_init  = (arm.calib_waves[0] - arm.DeSIRe_line.lambda0) * \
+                            NM_TO_ANGSTROM / MILLI
+
+            wave_final = (arm.calib_waves[-1] - arm.DeSIRe_line.lambda0) * \
+                            NM_TO_ANGSTROM / MILLI
+            wave_final_string = '{:13.6F}'.format(wave_final)
+
+            data.append(GRID_FORMAT.format(lineID_string, wave_init, wave_step, \
+                                           wave_final_string[:-1]))
 
 
-    def ViSP_write_aux_files(self):
+        grid_file = open(wavegrid_filepath, 'w')
+        for line in data:
+            grid_file.write(line)
+        grid_file.close()
 
-        self.ViSP_write_wavegrid()
-        self.ViSP_write_PSF()
+        
+    def ViSP_write_PSF(self, fits_directory):
+
+        NM_TO_ANGSTROM = 10
+        MILLI          = 1.0E-3
+
+        PSF_FORMAT  = '    {: 2d}   {:9.8g}' + 4 * '  {:13.5E}' + "\n"
+        MAX_SIGMA   = 5.0
+        SAMPL_SIGMA = 25
+
+        PSF_filename = "PSF"
+        for arm in self.visp_arms:
+            PSF_filename += "_" + arm.datasetID
+        PSF_filename += ".per"
+        
+        PSF_filepath = os.path.join(fits_directory, PSF_filename)
+        
+        data = []
+        for arm in self.visp_arms:
+            sigma     = arm.FWHM / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+            PSF_wave  = np.arange(-MAX_SIGMA * sigma, MAX_SIGMA * sigma, \
+                                  sigma/SAMPL_SIGMA, dtype=np.float64)
+            PSF_value = np.exp(-(PSF_wave / sigma)**2 / 2.0)
+
+            for la in range(len(PSF_wave)):
+                 data.append(PSF_FORMAT.format(arm.DeSIRe_line.ID, \
+                                               PSF_wave[la] * NM_TO_ANGSTROM / MILLI, \
+                                               PSF_value[la], 0.0, 0.0, 0.0))
+
+        psf_file = open(PSF_filepath, 'w')
+        for line in data:
+            psf_file.write(line)
+        psf_file.close()
+
+        
+    def ViSP_write_aux_files(self, fits_directory):
+
+        self.ViSP_write_wavegrid(fits_directory)
+        self.ViSP_write_PSF(fits_directory)
 
 
     def ViSP_get_polarization_map(self):
@@ -679,8 +761,8 @@ class ViSP_inversion:
 def main():
 
     
-    dataset_root   = '/home/han/Data/DKIST/id.136838.527585/'
-    fits_directory = '/home/han/Data/DKIST/Fits_dir/'
+    dataset_root   = '/Users/han/Data/DKIST/id.136838.527585/'
+    fits_directory = '/Users/han/Data/DKIST/Fits_dir/'
 
     fiducial_arm_ID = 3
     fiducial_pol_ID = 1
@@ -709,10 +791,9 @@ def main():
         arm.ViSP_calibrate_intensity(inv.fiducial_pol_map)
         arm.ViSP_remove_crosstalk()
         arm.ViSP_find_PSF(inv.fiducial_pol_map)
-
         arm.ViSP_write_data_fits(fits_directory)
         
-    inv.ViSP_write_aux_files()
+    inv.ViSP_write_aux_files(fits_directory)
     
     inv.ViSP_show_arms()
 
