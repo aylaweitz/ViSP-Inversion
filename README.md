@@ -3,7 +3,6 @@
 ## 1 Identify invertible data sets:
 
 [Thunderbolts](https://thunderbolts.dev.dkistdc.nso.edu/proposals)
-https://thunderbolts.dev.dkistdc.nso.edu/proposals
 
 
 ## 2 Pre-processing pipeline and tools
