@@ -66,6 +66,7 @@ You will have to make this file visble to python by including the path to it in 
 
 ### 2.4 Installing the DeSIRe inversion code
 
-Information yet to come.
+File *desire-v5.06.tgz* contains the DeSIRe inversion code. To install unpack the tar file and run *make FC=gfortran install*
+in the src directory.
 
-+ Apr 4,  2025 
++ Apr 6,  2025 
