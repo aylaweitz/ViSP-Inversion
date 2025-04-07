@@ -573,9 +573,8 @@ class ViSP_inversion:
             im = ax[i].imshow(reference_img, origin='lower', cmap="gray", 
                               vmin=0.55, vmax=1.2, \
                               extent=[xarcsec[0], xarcsec[-1], yarcsec[0], yarcsec[-1]])
-            ax[i].set(ylabel='scan direction [arcsec]', xlabel='along slit [arcsec]', \
-                      title=arm.spectrumID)
-            fig.colorbar(im, label='continuum intensity', location='top', \
+            ax[i].set(ylabel='scan direction [arcsec]', xlabel='along slit [arcsec]')
+            fig.colorbar(im, label='continuum ' + arm.spectrumID, location='top', \
                          aspect=30, shrink=0.8)
         
         plt.savefig("arms_remapped.pdf", format="pdf")
@@ -663,7 +662,7 @@ class ViSP_inversion:
         NM_TO_ANGSTROM = 10
         MILLI          = 1.0E-3
 
-        GRID_FORMAT = '{:s}              :      {:13.5f},     {:9.5f},      {:s}   \n'
+        GRID_FORMAT = '{:s}     : {:15.9f}, {:5.9f}, {:15.9f}\n'
         SEPARATOR   = '----------------------------------------------------------------------------\n'
 
         PREAMBLE    = "IMPORTANT: a) All items must be separated by commas.\n" + \
@@ -684,8 +683,10 @@ class ViSP_inversion:
         data.append(PREAMBLE)
         data.append(SEPARATOR)
 
-        for arm in self.visp_arms:
-
+        for arm in sorted(self.visp_arms, key=lambda arm: arm.DeSIRe_line.lambda0):
+ 
+            Nwave = len(arm.calib_waves)
+            
             lineID_string = '{:d}'.format(arm.DeSIRe_line.ID)
             for blend in arm.blends:
                 lineID_string += ',{:d}'.format(blend.ID)
@@ -694,13 +695,10 @@ class ViSP_inversion:
                             NM_TO_ANGSTROM / MILLI
             wave_init  = (arm.calib_waves[0] - arm.DeSIRe_line.lambda0) * \
                             NM_TO_ANGSTROM / MILLI
-
-            wave_final = (arm.calib_waves[-1] - arm.DeSIRe_line.lambda0) * \
-                            NM_TO_ANGSTROM / MILLI
-            wave_final_string = '{:13.6F}'.format(wave_final)
+            wave_final = wave_init + (Nwave - 1)* wave_step
 
             data.append(GRID_FORMAT.format(lineID_string, wave_init, wave_step, \
-                                           wave_final_string[:-1]))
+                                           wave_final))
 
 
         grid_file = open(wavegrid_filepath, 'w')
