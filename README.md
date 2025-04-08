@@ -51,8 +51,8 @@ assume you have one of the anaconda variants installed for your package manageme
 + conda activate dkist
 + conda install -c conda-forge dkist
 + conda install -c conda-forge numba
-+ conda install -c conda-forge xdrlib-mda
-+ conda install -c scikit-learn
++ conda install -c conda-forge mda-xdrlib
++ conda install -c conda-scikit-learn
 
 You may also want to install the jupyter package, to make plots, run tests.
 
@@ -63,6 +63,12 @@ You will have to make this file visble to python by including the path to it in 
 *PYTHONPATH* environment variable:
 
 + export PYTHONPATH={$HOME}/your/ViSP_package/directory
+  
+Finally, the code needs to be able to read the solar disk-center atlas as implemented in the RH code.
+To indstall you will have to download the sub-directory *python/rhanalyze" from the [RH distribution
+on GitHub: ](https://github.com/han-uitenbroek/RH) and add that to your PYTHONPATH environment variable:
+
++ export PYTHONPATH=${PYTHONPATH}:{$HOME}/your/rhanalyze/directory
 
 ### 2.4 Installing the DeSIRe inversion code
 
