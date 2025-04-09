@@ -636,9 +636,7 @@ class ViSP_inversion:
             arm.hairlineset = vt.hairlineset(reference_img)
             arm.hairlineset.remove(arm.spectrum)
 
-        if len(self.visp_arms) == 1:
-            return
-        else:
+        if len(self.visp_arms) > 1:
     
             nonfid_arms = [arm for arm in self.visp_arms if arm.armID != self.fiducial_arm.armID]
 
