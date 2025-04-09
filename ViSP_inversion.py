@@ -544,16 +544,21 @@ class ViSP_inversion:
         print("Slit step size is {:1.5f} [arcsec]\n".format(self.slit_step) + 
               "Slit width is {:1.5f} [arcsec]".format(self.slit_width))
 
-        
+
         fig, ax = plt.subplots(ncols=1, nrows=len(self.visp_arms), figsize=(10, 4),\
                                constrained_layout=True)
         for i in range(len(self.visp_arms)):
             arm = self.visp_arms[i]
 
+            if len(self.visp_arms) == 1:
+                axi = ax
+            else:
+                axi = ax[i]
+                
             norm_obs = arm.avg_spectrum / np.max(arm.avg_spectrum)
-            ax[i].plot(arm.calib_waves, norm_obs, label='average spectrum')
-            ax[i].plot(arm.lambda_atlas, arm.norm_atlas, label='atlas')
-            ax[i].set(title='arm ID: {0}'.format(arm.armID))
+            axi.plot(arm.calib_waves, norm_obs, label='average spectrum')
+            axi.plot(arm.lambda_atlas, arm.norm_atlas, label='atlas')
+            axi.set(title='arm ID: {0}'.format(arm.armID))
 
         plt.legend()
         plt.savefig("wavelength_solution.pdf", format="pdf")
@@ -570,10 +575,15 @@ class ViSP_inversion:
 
             reference_img = arm.spectrum[0, arm.continuum_index, :, :]
                 
-            im = ax[i].imshow(reference_img, origin='lower', cmap="gray", 
+            if len(self.visp_arms) == 1:
+                axi = ax
+            else:
+                axi = ax[i]
+                
+            im = axi.imshow(reference_img, origin='lower', cmap="gray", 
                               vmin=0.55, vmax=1.2, \
                               extent=[xarcsec[0], xarcsec[-1], yarcsec[0], yarcsec[-1]])
-            ax[i].set(ylabel='scan direction [arcsec]', xlabel='along slit [arcsec]')
+            axi.set(ylabel='scan direction [arcsec]', xlabel='along slit [arcsec]')
             fig.colorbar(im, label='continuum ' + arm.spectrumID, location='top', \
                          aspect=30, shrink=0.8)
         
