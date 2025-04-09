@@ -657,8 +657,8 @@ class ViSP_inversion:
             
             arm_pool.close()
 
-            for arm in self.visp_arms:
-                arm.ViSP_get_rebin_params(self.fiducial_arm, self.slit_width)
+        for arm in self.visp_arms:
+            arm.ViSP_get_rebin_params(self.fiducial_arm, self.slit_width)
 
         
     def ViSP_write_wavegrid(self, fits_directory):
