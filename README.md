@@ -52,7 +52,7 @@ assume you have one of the anaconda variants installed for your package manageme
 + conda install -c conda-forge dkist
 + conda install -c conda-forge numba
 + conda install -c conda-forge mda-xdrlib
-+ conda install -c conda-scikit-learn
++ conda install -c conda-forge scikit-learn
 
 You may also want to install the jupyter package, to make plots, run tests.
 
