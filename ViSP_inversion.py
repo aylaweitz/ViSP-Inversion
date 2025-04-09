@@ -636,25 +636,29 @@ class ViSP_inversion:
             arm.hairlineset = vt.hairlineset(reference_img)
             arm.hairlineset.remove(arm.spectrum)
 
-        nonfid_arms = [arm for arm in self.visp_arms if arm.armID != self.fiducial_arm.armID]
+        if len(self.visp_arms) == 1:
+            return
+        else:
+    
+            nonfid_arms = [arm for arm in self.visp_arms if arm.armID != self.fiducial_arm.armID]
 
-        arm_pool = mp.Pool(processes=len(self.visp_arms) - 1)
+            arm_pool = mp.Pool(processes=len(self.visp_arms) - 1)
         
-        results = [arm_pool.apply_async(arm.ViSP_remap_data, \
-                                        args=(self.fiducial_arm, 0)) \
-                   for arm in nonfid_arms]
+            results = [arm_pool.apply_async(arm.ViSP_remap_data, \
+                                            args=(self.fiducial_arm, 0)) \
+                       for arm in nonfid_arms]
 
 
-        for arm, arm_No in zip(nonfid_arms, range(len(results))):
-            spectrum_remap = results[arm_No].get()
+            for arm, arm_No in zip(nonfid_arms, range(len(results))):
+                spectrum_remap = results[arm_No].get()
             
-            del arm.spectrum
-            arm.spectrum = spectrum_remap
+                del arm.spectrum
+                arm.spectrum = spectrum_remap
             
-        arm_pool.close()
+            arm_pool.close()
 
-        for arm in self.visp_arms:
-            arm.ViSP_get_rebin_params(self.fiducial_arm, self.slit_width)
+            for arm in self.visp_arms:
+                arm.ViSP_get_rebin_params(self.fiducial_arm, self.slit_width)
 
         
     def ViSP_write_wavegrid(self, fits_directory):
