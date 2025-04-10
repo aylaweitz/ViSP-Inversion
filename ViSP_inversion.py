@@ -547,13 +547,10 @@ class ViSP_inversion:
 
         fig, ax = plt.subplots(ncols=1, nrows=len(self.visp_arms), figsize=(10, 4),\
                                constrained_layout=True)
-        for i in range(len(self.visp_arms)):
+        for i range(len(self.visp_arms)):
             arm = self.visp_arms[i]
 
-            if len(self.visp_arms) == 1:
-                axi = ax
-            else:
-                axi = ax[i]
+            axi = ax if len(self.visp_arms) == 1 else axi = ax[i]
                 
             norm_obs = arm.avg_spectrum / np.max(arm.avg_spectrum)
             axi.plot(arm.calib_waves, norm_obs, label='average spectrum')
@@ -575,11 +572,8 @@ class ViSP_inversion:
 
             reference_img = arm.spectrum[0, arm.continuum_index, :, :]
                 
-            if len(self.visp_arms) == 1:
-                axi = ax
-            else:
-                axi = ax[i]
-                
+            axi = ax if len(self.visp_arms) == 1 else axi = ax[i]
+
             im = axi.imshow(reference_img, origin='lower', cmap="gray", 
                               vmin=0.55, vmax=1.2, \
                               extent=[xarcsec[0], xarcsec[-1], yarcsec[0], yarcsec[-1]])
