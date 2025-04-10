@@ -70,9 +70,16 @@ on GitHub: ](https://github.com/han-uitenbroek/RH) and add that to your PYTHONPA
 
 + export PYTHONPATH=${PYTHONPATH}:{$HOME}/your/rhanalyze/directory
 
-### 2.4 Installing the DeSIRe inversion code
+## 3.0 Inversions with DeSIRe
+
+### 3.1 Installing the DeSIRe inversion code
 
 File *desire-v5.06.tgz* contains the DeSIRe inversion code. To install unpack the tar file and run *make FC=gfortran install*
 in the src directory.
 
-+ Apr 6,  2025 
+### 3.2 Python wrapper for parallel processing in DeSIRe
+
+The file *parallel_master.tgz* contains python code to execute DeSIRe in parrallel. Unpack the tar file and compile the included DeSIRe code.
+
+
++ Apr 10,  2025 
