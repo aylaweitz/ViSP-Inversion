@@ -100,6 +100,7 @@ class ViSP_arm:
         self.clv_interp = self.ViSP_read_clv(clv_file_path)
 
 
+    # match wavelength scale to the atlas
     def ViSP_find_wavelength_solution(self):
 
         ATL_RANGE     = 2.0
@@ -120,6 +121,7 @@ class ViSP_arm:
                                                                 ref_lambda + ATL_RANGE)
         self.norm_atlas = intensity / continuum   
 
+        # takes an initial guess at the dispersion
         match self.spectrumID:
              case "Fe I (630.25 nm)":
                  dispersion = 1.281E-03
@@ -210,6 +212,10 @@ class ViSP_arm:
         return vt.psf_broad(waves, atlas_int, FWHM, mode="Gaussian")
 
 
+    # Using atlas, do a line fit: spectral broadening, and wavelength offset
+    # when lines are asymettric when you broaden them, they shift slightly in wavelength
+    # this gives a small correction to fit the atlas
+    # PSF: Point Spread Function
     def ViSP_find_PSF(self, pol_map):
 
         POL_THRESHOLD = 0.005
@@ -237,6 +243,7 @@ class ViSP_arm:
         limits = vt.table_invert(self.calib_waves, np.array([self.lambda_blu, self.lambda_red]), \
                                  mode="index")
         
+        # 100:175 - hard coded number of scan steps to limit size of scan
         self.spectrum = self.transp_data[:, limits[0]:limits[1], 100:175, :].compute()
 
         self.calib_waves     = self.calib_waves[limits[0]:limits[1]]
@@ -314,6 +321,9 @@ class ViSP_arm:
         return clv_interp
 
         
+    # Compare atlas to intensity. 
+    # Eventually the inversion code needs physical units. These are just counts
+    # The inversion code has an internal table as a function of wavelength for absolute values
     def ViSP_calibrate_intensity(self, pol_map):
 
         POL_THRESHOLD = 0.005
@@ -357,6 +367,9 @@ class ViSP_arm:
         print("Npix_avg: {0}, Npix_rebin: {1}".format(self.Npix_avg, self.Npix_rebin))
 
         
+    # equal spatial extent for pixels in horizontal and vertical
+    # rebin along the slit to get pixels with the same width and height
+    # The slit covers several pixels across
     def ViSP_rebin(self):
 
         Nstokes, Nwave = self.spectrum.shape[0:2]
@@ -371,6 +384,8 @@ class ViSP_arm:
         self.spectrum = save_spectrum
 
 
+    # improve the polarization calibration that the L1 does
+    # remove leftover polarization artifcations that L1 doesn't get
     def ViSP_remove_crosstalk(self, mode="Sanchez_Kuhn"):
 
         match mode:
@@ -487,6 +502,7 @@ class ViSP_arm:
                 pass
 
 
+    # remove the atmospheric (telluric) lines
     def ViSP_remove_telluric(self):
 
         for limits in self.telluric:
@@ -496,6 +512,9 @@ class ViSP_arm:
             vt.remove_telluric_pix(stokes_I, j0, j1)
 
 
+    # placeholder - telluric lines are supposed to be stationary with respect to the observatory
+    # if they will drift over time, then the instrument is drifting in wavelength
+    # then later we can apply a velocity correction
     def ViSP_get_drift(self):
         pass
 
@@ -532,6 +551,7 @@ class ViSP_inversion:
         self.Blanca_nodes = Blanca_nodes
 
 
+    # plot results to visually verify results
     def ViSP_show_arms(self):
         
         print("Found data sets for {:2d} arms:\n".format(len(self.visp_arms)))
@@ -584,6 +604,7 @@ class ViSP_inversion:
         plt.savefig("arms_remapped.pdf", format="pdf")
 
         
+    # determine slit width and step size along the slit
     def ViSP_slit_properties(self):
 
         slit_widths = [arm.slit_width for arm in self.visp_arms]
@@ -602,6 +623,8 @@ class ViSP_inversion:
         self.slit_step = np.mean(slit_steps)
 
 
+    # Heliocentric angle. Position of the disc. Radius from time.
+    # determine mu = cosine (viewing angle)
     def ViSP_solar_location(self):
 
         (Nstokes, Nscan, Nwave, Npix) = self.fiducial_arm.dataset.shape
@@ -630,6 +653,10 @@ class ViSP_inversion:
             arm.mu = self.mu_fiducial
 
 
+    # all arms used spatially scaled to the one with the highest resolution
+    # from hairlines, we know the relative spatial scales
+    # continuum in each arm. Scale continuum image to the proper common spatial scale
+    # then cross-correlate to get the relative coalignment
     def ViSP_align_arms(self):
 
         for arm in self.visp_arms:
@@ -753,6 +780,10 @@ class ViSP_inversion:
         self.ViSP_write_PSF(fits_directory)
 
 
+    # The Atlas - observed center with little activity
+    # identify the pixels in our observation that come from a quiet area
+    # to best compare them to the atlas
+        # (only the pixels with a small circular polarization)
     def ViSP_get_polarization_map(self):
 
         stokes_I = self.fiducial_pol_arm.spectrum[0, :, :, :]
@@ -768,6 +799,8 @@ def main():
     dataset_root   = '/Users/han/Data/DKIST/id.136838.527585/'
     fits_directory = '/Users/han/Data/DKIST/Fits_dir/'
 
+    # every arm is scaled to the arm with the best resolution
+    # these are constants arm ids from L0/L1
     fiducial_arm_ID = 3
     fiducial_pol_ID = 1
     
