@@ -249,7 +249,7 @@ class DeSIRe_inverted_map:
                     axs_prof_kl.legend(loc='lower left')
 
                 if k == 3:
-                    axs_prof_kl.set(xlabel='$\Delta\lambda$ [nm]')
+                    axs_prof_kl.set(xlabel=r"$\Delta\lambda$ [nm]")
                     
         self.fig_prof.canvas.draw_idle()
         self.fig_prof.canvas.flush_events()
@@ -411,7 +411,6 @@ class DeSIRe_inverted_map:
             
         tau_slider.on_changed(slider_update)
       
-        plt.tight_layout()
         plt.show()
 
 
