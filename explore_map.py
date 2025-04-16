@@ -246,7 +246,7 @@ class DeSIRe_inverted_map:
                     self.axs_prof[0][0].legend(loc='lower left')
 
                 if k == 3:
-                    self.axs_prof[k][l].set(xlabel='$\Delta\lambda$ [nm]')
+                    self.axs_prof[k][l].set(xlabel=r"$\Delta\lambda$ [nm]")
                     
         self.fig_prof.canvas.draw_idle()
         self.fig_prof.canvas.flush_events()
@@ -411,14 +411,13 @@ class DeSIRe_inverted_map:
             
         tau_slider.on_changed(slider_update)
       
-        plt.tight_layout()
         plt.show()
 
 
 def main():
     
 
-    base_dir = '/Users/han/Data/DKIST/Results/'
+    base_dir = '/home/han/Data/DKIST/Inversion_Results/pid_2_114/results_AXYNP_AWVMV/'
 
     if len(sys.argv) > 1:
         scanID = sys.argv[1]
@@ -429,7 +428,7 @@ def main():
     map.read_map()
 
     map.display_map()
-##    map.physical_maps()
+    map.physical_maps()
         
 
 if __name__ == "__main__":
