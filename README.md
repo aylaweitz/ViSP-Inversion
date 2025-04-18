@@ -68,7 +68,7 @@ Finally, the code needs to be able to read the solar disk-center atlas as implem
 To indstall you will have to download the sub-directory *python/rhanalyze" from the [RH distribution
 on GitHub: ](https://github.com/han-uitenbroek/RH) and add that to your PYTHONPATH environment variable:
 
-+ export PYTHONPATH=${PYTHONPATH}:{$HOME}/your/rhanalyze/directory
++ export PYTHONPATH=${PYTHONPATH}:${HOME}/your/rhanalyze/directory
 
 ## 3.0 Inversions with DeSIRe
 
