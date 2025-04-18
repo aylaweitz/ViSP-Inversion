@@ -56,7 +56,7 @@ assume you have one of the anaconda variants installed for your package manageme
 
 You may also want to install the jupyter package, to make plots, run tests.
 
-+ conda install -c jupyter
++ conda install -c conda-forge jupyter
 
 The main set of routines *ViSP_inversion.py* depends on routines in the file ViSP_tools.py.
 You will have to make this file visble to python by including the path to it in your
