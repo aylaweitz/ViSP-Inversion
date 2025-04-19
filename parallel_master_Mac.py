@@ -107,9 +107,9 @@ def save_fits_p(array,arrayw,arrayind,file_name):
 
 def fix_path(path):
     path = repr(path)
-    path = path.replace(")", "\)")
-    path = path.replace("(", "\(")
-    path = path.replace(" ", "\ ")
+    path = path.replace(")", r"\)")
+    path = path.replace("(", r"\(")
+    path = path.replace(" ", r"\ ")
     path = os.path.abspath(path).split("'")[1]
     return path
 
