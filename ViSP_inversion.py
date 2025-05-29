@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 import dkist
-from rhanalyze.satlas import satlas
 import ViSP_tools as vt
 
 
@@ -115,7 +114,7 @@ class ViSP_arm:
         ref_index            = np.argmin(self.avg_spectrum)
         ref_lambda           = self.DeSIRe_line.lambda0
 
-        fts = satlas()
+        fts = vt.satlas_ds(self.aux_data_dir)
         self.lambda_atlas, intensity, continuum = fts.nmsiatlas(ref_lambda - ATL_RANGE,\
                                                                 ref_lambda + ATL_RANGE)
         self.norm_atlas = intensity / continuum   

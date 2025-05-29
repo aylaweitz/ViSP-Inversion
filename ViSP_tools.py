@@ -1,5 +1,6 @@
 import numpy as np
 from scipy import interpolate, constants, integrate
+import scipy.io.idl as idl
 from numba import jit
 
 
@@ -501,7 +502,7 @@ def air_to_vacuum(lambda_air):
 ##  --- Routines for interpolation by cubic convolution.
 ##
 ##      Author:        Han Uitenbroek  (huitenbroek@nso.edu)
-##       Last modified: Fri Apr  4 10:05:24 2025 --
+##       Last modified: Thu May 29 16:18:21 2025 --
 ##
 ##  See: R.G. Keys, 1981, in IEEE Trans. Acoustics, Speech,
 ##        and Signal Processing, Vol. 29, pp. 1153-1160.
@@ -655,3 +656,65 @@ def FilterCurve(lambda0, waves, FWHM=1.0, cavity=2.0):
     
     return filter_curve / integrate.trapezoid(filter_curve, waves)
 
+
+### Atlas adopted from STiC, courtesy Jaime de la Cruz. Gratefully acknowledged!
+
+class satlas_ds:
+    
+    def __init__(self, aux_data_dir):
+
+        DATA_PATH = os.path.join(aux_data_dir, "fts_disk_center.idlsave")
+
+        # Load data file
+        fts = idl.readsav(DATA_PATH)
+        
+        self.cont = fts["ftscnt"]
+        self.sp   = fts["ftsint"]
+        self.wav  = fts["ftswav"]
+
+
+    def tosi(self, wav, s):
+        
+        clight=2.99792458e8      #speed of light [m/s]                                  
+        aa_to_m=1e-10                                                                        
+        cm_to_m=1e-2
+        # from from Watt /(s cm2 ster AA) to Watt/(s m2 ster m) 
+        s /= cm_to_m**2 * aa_to_m
+        s *= (wav*aa_to_m)**2 / clight # to Watt/(s m2 Hz ster)
+        return s
+
+
+    def getatlas(self, w0, w1, si = False):
+        
+        idx = (np.where((self.wav >= w0) & (self.wav <= w1)))[0]
+
+        wav =  np.copy(self.wav[idx[0]:idx[-1]])
+        sp =   np.copy(self.sp[idx[0]:idx[-1]])
+        cont = np.copy(self.cont[idx[0]:idx[-1]])
+
+        # convert to IS units
+        if(si):
+            sp =   self.tosi(wav, sp)
+            cont = self.tosi(wav, cont)
+
+        # Normalize by the continuum (default)
+        else:
+            sp /= cont
+            cont[:] = 1.0
+            
+        return wav, sp, cont
+
+    
+    def nmsiatlas(self, wnm0, wnm1):
+        
+        # Easy shortcut for wavelengths in nm and SI units.
+        # HU, Jul  9 2021 
+        
+        NM_TO_ANGSTROM = 10.0
+
+        w0 = wnm0 * NM_TO_ANGSTROM
+        w1 = wnm1 * NM_TO_ANGSTROM
+
+        atl = self.getatlas(w0, w1, si=True)
+
+        return atl[0] / NM_TO_ANGSTROM, atl[1], atl[2]
