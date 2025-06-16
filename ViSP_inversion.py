@@ -236,7 +236,7 @@ class ViSP_arm:
         limits = vt.table_invert(self.calib_waves, np.array([self.lambda_blu, self.lambda_red]), \
                                  mode="index")
         
-        self.spectrum = self.transp_data[:, limits[0]:limits[1], 100:175, :].compute()
+        self.spectrum = self.transp_data[:, limits[0]:limits[1], :, :].compute()
 
         self.calib_waves     = self.calib_waves[limits[0]:limits[1]]
         self.avg_spectrum    = self.avg_spectrum[limits[0]:limits[1]]
@@ -620,7 +620,9 @@ class ViSP_inversion:
         self.mu_fiducial = np.sqrt(1.0 - (latitude[Npix//2]**2 + \
                                           longitude[Nscan//2]**2) / sun_app_rad**2)
         print("Solar viewing angle: mu = {0:5.3f}".format(self.mu_fiducial))
-
+        print("Solar (x, y) = ({0:5.3f}, {1:5.3f})".format(longitude[Nscan//2] / sun_app_rad,
+                                                           latitude[Npix//2] / sun_app_rad))
+        
         for arm in self.visp_arms:
             arm.mu = self.mu_fiducial
 
