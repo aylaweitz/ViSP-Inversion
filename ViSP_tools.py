@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from scipy import interpolate, constants, integrate
 import scipy.io.idl as idl
@@ -240,7 +241,7 @@ class hairlineset:
 
     def find(self):
 
-        HAIR_CONTRAST_TRESHOLD = 0.5
+        HAIR_CONTRAST_TRESHOLD = 0.3
         HAIR_MARGIN            = 5
 
         (Nscan, Npix) = np.shape(self.reference_img)
@@ -422,6 +423,12 @@ class DeSIRe_line:
         ## 16
         list.append(DeSIRe_line(37, 'SI', 1, 855.0353,  6.2227, \
                                 -1.480,    1, 'D', 2.0, 5, '{1.5P0.5s}', 1.0))
+        ## 17
+        list.append(DeSIRe_line(40, 'NI', 1, 589.2883, 1.9859, \
+                                -2.350,    3, 'P', 0.0, 1, 'P', 1.0))
+        ## 18
+        list.append(DeSIRe_line(41, 'FE', 1, 589.26933, 4.2562, \
+                                -2.288,    5, 'F', 3.0, 3, 'D', 3.0))
         return list
 
 
@@ -502,7 +509,7 @@ def air_to_vacuum(lambda_air):
 ##  --- Routines for interpolation by cubic convolution.
 ##
 ##      Author:        Han Uitenbroek  (huitenbroek@nso.edu)
-##       Last modified: Thu May 29 16:18:21 2025 --
+##       Last modified: Mon Jun 16 16:29:55 2025 --
 ##
 ##  See: R.G. Keys, 1981, in IEEE Trans. Acoustics, Speech,
 ##        and Signal Processing, Vol. 29, pp. 1153-1160.

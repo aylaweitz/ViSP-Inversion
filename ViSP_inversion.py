@@ -87,7 +87,7 @@ class ViSP_arm:
 
              case "Na I D1 (589.59 nm)":
                  self.DeSIRe_line = DeSIRe_line_list[8]
-                 self.blends      = [DeSIRe_line_list[9]]
+                 self.blends      = [DeSIRe_line_list[9], DeSIRe_line_list[17], DeSIRe_line_list[18]]
                  clv_file = "NaI_5896_clv.fits"
                  
              case "Ca II (854.21 nm)":
@@ -758,8 +758,8 @@ class ViSP_inversion:
 def main():
 
     
-    dataset_root   = '/home/han/Data/DKIST/Inversion_ToDo/id.136838.738364/pid_2_114/'
-    fits_directory = '/home/han/Data/DKIST/Fits_dir/'
+    dataset_root   = '/scratch/alpine/hui9576/Data/DKIST/id.156511.623969/'
+    fits_directory = '/scratch/alpine/hui9576/Data/DKIST/Fits_dir/'
 
     fiducial_arm_ID = 3
     fiducial_pol_ID = 1
