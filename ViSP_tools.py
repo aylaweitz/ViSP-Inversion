@@ -509,7 +509,7 @@ def air_to_vacuum(lambda_air):
 ##  --- Routines for interpolation by cubic convolution.
 ##
 ##      Author:        Han Uitenbroek  (huitenbroek@nso.edu)
-##       Last modified: Mon Jun 16 16:29:55 2025 --
+##       Last modified: Tue Aug 12 09:39:02 2025 --
 ##
 ##  See: R.G. Keys, 1981, in IEEE Trans. Acoustics, Speech,
 ##        and Signal Processing, Vol. 29, pp. 1153-1160.
@@ -665,6 +665,8 @@ def FilterCurve(lambda0, waves, FWHM=1.0, cavity=2.0):
 
 
 ### Atlas adopted from STiC, courtesy Jaime de la Cruz. Gratefully acknowledged!
+### Reference for the atlas: https://link.springer.com/article/10.1023/A:1017165208013
+### Based on the spectral atlas made available by Brault and Neckel 1987
 
 class satlas_ds:
     
