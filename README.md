@@ -6,6 +6,8 @@ Pre-processing is done with the *ViSP_inversion.py* file.
 - I made `aux_data_dir` a relative path since it's one of the things downloaded in this repo
 - I forget what `fiducial_arm_ID = 3` and `fiducial_pol_ID = 1` do...
 
+  ^ *maybe instead of running through han's pre-porcessing, I manually configure the necessary output files from the pre-processing i've already done?*
+
 in *initialization.input*, change things there too
 
 Once the *ViSP_inversion.py* file is configured, make sure the `dkist` conda env is activated and run `python ViSP_inversion` in the terminal.
