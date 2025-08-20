@@ -1,3 +1,15 @@
+## Steps that I've done
+
+Pre-processing is done with the *ViSP_inversion.py* file.
+
+- in the *main* function, change `dataset_root` to the directory where your data is located and `fits_directory` to where you want the pre-processed output fits files to be(?).
+- I forget what `fiducial_arm_ID = 3` and `fiducial_pol_ID = 1` do...
+
+Once the *ViSP_inversion.py* file is configured, make sure the `dkist` conda env is activated and run `python ViSP_inversion` in the terminal.
+--> getting error that can't find my adsf file in my dataset_root directory
+
+---
+
 # DKIST Level 2 pipeline for inversion of ViSP data
 
 ## 1 Identify invertible data sets:
@@ -82,4 +94,3 @@ in the src directory.
 The file *parallel_master.tgz* contains python code to execute DeSIRe in parrallel. Unpack the tar file and compile the included DeSIRe code.
 
 
-+ Apr 10,  2025 
