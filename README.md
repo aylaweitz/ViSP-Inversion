@@ -74,7 +74,7 @@ on GitHub: ](https://github.com/han-uitenbroek/RH) and add that to your PYTHONPA
 
 ### 3.1 Installing the DeSIRe inversion code
 
-File *desire-v5.06.tgz* contains the DeSIRe inversion code. To install unpack the tar file and run *make FC=gfortran install*
+File *desire-v5.06.tgz* contains the DeSIRe inversion code. To install unpack the tar file and run `make FC=gfortran install`
 in the src directory.
 
 ### 3.2 Python wrapper for parallel processing in DeSIRe
