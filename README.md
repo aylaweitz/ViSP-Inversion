@@ -3,10 +3,11 @@
 Pre-processing is done with the *ViSP_inversion.py* file.
 
 - in the *main* function, change `dataset_root` to the directory where your data is located and `fits_directory` to where you want the pre-processed output fits files to be(?).
+- I made `aux_data_dir` a relative path since it's one of the things downloaded in this repo
 - I forget what `fiducial_arm_ID = 3` and `fiducial_pol_ID = 1` do...
 
 Once the *ViSP_inversion.py* file is configured, make sure the `dkist` conda env is activated and run `python ViSP_inversion` in the terminal.
---> getting error that can't find my adsf file in my dataset_root directory
+
 
 ---
 
