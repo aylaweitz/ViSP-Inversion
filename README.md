@@ -7,7 +7,7 @@ I created a new directory in the "run" directory and copied "desire.dtrol", "key
 How i think it runs as of now (aug 21):
 - cd into the new directory you made in the "run" directory. Mine is called "custom_test"
 - then run `../../bin/desire desire.dtrol`
-- right now it errors because there is no "observed" file thingy
+- right now it errors because there is no "observed" file thingy -- not sure how that's formatted yet...
 
 __
 
