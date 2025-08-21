@@ -1,5 +1,16 @@
 ## Steps that I've done
 
+Steps for installing found in *ViSP-Inversion/desire-v5.06/doc/installation.txt*.
+
+I created a new directory in the "run" directory and copied "desire.dtrol", "keyword.input" and the "input" folder included in "run/example".
+
+How i think it runs as of now (aug 21):
+- cd into the new directory you made in the "run" directory. Mine is called "custom_test"
+- then run `../../bin/desire desire.dtrol`
+- right now it errors because there is no "observed" file thingy
+
+__
+
 Pre-processing is done with the *ViSP_inversion.py* file.
 
 - in the *main* function, change `dataset_root` to the directory where your data is located and `fits_directory` to where you want the pre-processed output fits files to be(?).
