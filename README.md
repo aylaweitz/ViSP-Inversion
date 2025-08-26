@@ -1,5 +1,9 @@
 ## Steps that I've done
 
+OK, I'm trying to run raw (not pre processed) data through desire so I can understand the necesary inputs. I think in the most basic sense, I just need to configure the fits file in the correct way. 
+
+__
+
 Steps for installing found in *ViSP-Inversion/desire-v5.06/doc/installation.txt*.
 
 I created a new directory in the "run" directory and copied "desire.dtrol", "keyword.input" and the "input" folder included in "run/example".
@@ -8,6 +12,8 @@ How i think it runs as of now (aug 21):
 - cd into the new directory you made in the "run" directory. Mine is called "custom_test"
 - then run `../../bin/desire desire.dtrol`
 - right now it errors because there is no "observed" file thingy -- not sure how that's formatted yet...
+
+* ^ ok in Han's visp version i dont think he does this so ignore this for now (aug 26)
 
 __
 
@@ -19,7 +25,12 @@ Pre-processing is done with the *ViSP_inversion.py* file.
 
   ^ *maybe instead of running through han's pre-porcessing, I manually configure the necessary output files from the pre-processing i've already done?*
 
-in *initialization.input*, change things there too
+__
+
+in *parallel_master_v0.7/initialization.input*, change things there too.
+in section 2, path to the data you want to run
+
+__
 
 Once the *ViSP_inversion.py* file is configured, make sure the `dkist` conda env is activated and run `python ViSP_inversion` in the terminal.
 
