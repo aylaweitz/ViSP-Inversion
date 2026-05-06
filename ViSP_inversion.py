@@ -125,8 +125,8 @@ class ViSP_arm:
 
         match self.spectrumID:
              case "Fe I (630.25 nm)":
-                 dispersion = 1.281E-03
-#                 dispersion = self.dlambda # initial dispersion guess
+                #  dispersion = 1.281E-03
+                dispersion = self.dlambda # initial dispersion guess
 
                  lines    = {629.77927: 'Fe I', 629.9582: 'Zr I', \
                              630.068: 'Hf I', 630.15012: 'Fe I', \
@@ -142,7 +142,8 @@ class ViSP_arm:
                  self.continuum_interval = [630.300, self.lambda_red]
 
              case "Na I D1 (589.59 nm)":
-                 dispersion   = 1.4E-3
+                #  dispersion   = 1.4E-3
+                 dispersion = self.dlambda # initial dispersion guess
 
                  lines    = {588.9973: 'Na I', 589.1175: 'Fe I', \
                              589.2883: 'Ni I', 589.5940: 'Na I'}
@@ -154,8 +155,8 @@ class ViSP_arm:
                  self.continuum_interval = [589.360, 589.420]
                  
              case "Ca II (854.21 nm)":
-                 dispersion   = 1.873E-03
-#                 dispersion = self.dlambda # initial dispersion guess                
+                #  dispersion   = 1.873E-03
+                dispersion = self.dlambda # initial dispersion guess                
 
                  lines    = {853.6163: 'Si I', 853.80147: 'Fe I', 854.21: 'Ca II',\
                              854.8079: 'Ti I'}
