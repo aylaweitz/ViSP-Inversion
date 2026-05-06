@@ -200,14 +200,31 @@ class ViSP_arm:
         
         # self.calib_waves = poly(np.arange(Nwave))
             
+        # Clean finite values -- TEST because failing with newly callibrated data
+        mask = np.isfinite(index_positions) & np.isfinite(wave_positions)
+        index_positions = index_positions[mask]
+        wave_positions  = wave_positions[mask]
+
+        print("self.spectrumID")
+        print("index_positions:", index_positions)
+        print("wave_positions:", wave_positions)
+
         # Check count
         if len(index_positions) < 3:
             raise RuntimeError("Not enough valid line matches for wavelength calibration")
-            
-        #### Normalize for stability -- test bc currenty failing for recallibrated data
+
+        # Check spread
+        x_std = index_positions.std()
+        if x_std < 1e-6:
+            raise RuntimeError("Degenerate index_positions (all nearly identical)")
+
+        # Normalize
         x_mean = index_positions.mean()
-        x_std  = index_positions.std()
         x_scaled = (index_positions - x_mean) / x_std
+
+        # Final sanity check
+        if not np.all(np.isfinite(x_scaled)):
+            raise RuntimeError("Non-finite values after scaling")
 
         coefficients = np.polyfit(x_scaled, wave_positions, 2)
         poly = np.poly1d(coefficients)
