@@ -193,12 +193,26 @@ class ViSP_arm:
 
             n += 1
      
-        coefficients = np.polyfit(index_positions, wave_positions, 2)
-        poly         = np.poly1d(coefficients)
+        # coefficients = np.polyfit(index_positions, wave_positions, 2)
+        # poly         = np.poly1d(coefficients)
         
-        #-# Store the calibrated wavelengths for the current arm
+        # #-# Store the calibrated wavelengths for the current arm
         
-        self.calib_waves = poly(np.arange(Nwave))
+        # self.calib_waves = poly(np.arange(Nwave))
+            
+        # Check count
+        if len(index_positions) < 3:
+            raise RuntimeError("Not enough valid line matches for wavelength calibration")
+            
+        #### Normalize for stability -- test bc currenty failing for recallibrated data
+        x_mean = index_positions.mean()
+        x_std  = index_positions.std()
+        x_scaled = (index_positions - x_mean) / x_std
+
+        coefficients = np.polyfit(x_scaled, wave_positions, 2)
+        poly = np.poly1d(coefficients)
+
+        self.calib_waves = poly((np.arange(Nwave) - x_mean) / x_std)
 
 
     def ViSP_broadened_atlas(self, waves, FWHM, wave_offset):
