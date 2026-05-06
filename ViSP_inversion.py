@@ -106,7 +106,7 @@ class ViSP_arm:
     def ViSP_find_wavelength_solution(self):
 
         ATL_RANGE     = 2.0
-        DELTA_LAM     = 0.01
+        DELTA_LAM     = 0.05 # 0.01 -- increased range because failing to find lines
         POL_THRESHOLD = 0.002
         
         stokes_I = self.transp_data[0, :, :, :].compute()
