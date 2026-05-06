@@ -29,8 +29,8 @@ class ViSP_arm:
             print("Data directory {} does not exist. Exiting".format(dataset_path))
             exit()
 
-        home_dir = os.path.expanduser("~")
-        self.aux_data_dir = os.path.join(home_dir, "Source/Python/DKIST/ViSP_invert/Aux_data")
+        #home_dir = os.path.expanduser("~")
+        self.aux_data_dir = "Aux_data/"
 
         self.ViSP_analyze_asdf()
 
@@ -47,6 +47,10 @@ class ViSP_arm:
         self.slit_width = self.dataset.headers[0]["VSPWID"]
         self.slit_step  = self.dataset.headers[0]["CDELT3"]
         self.wcs_names  = self.dataset.wcs.pixel_axis_names
+
+        # i added this in, dispersion first guess
+        self.dlambda  = self.dataset.headers[0]["CDELT2"]
+        print('initial dispersion:'+ str(self.dlambda))
 
         match self.wcs_names.index('dispersion axis'):
             case 0:
@@ -122,6 +126,7 @@ class ViSP_arm:
         match self.spectrumID:
              case "Fe I (630.25 nm)":
                  dispersion = 1.281E-03
+#                 dispersion = self.dlambda # initial dispersion guess
 
                  lines    = {629.77927: 'Fe I', 629.9582: 'Zr I', \
                              630.068: 'Hf I', 630.15012: 'Fe I', \
@@ -150,6 +155,7 @@ class ViSP_arm:
                  
              case "Ca II (854.21 nm)":
                  dispersion   = 1.873E-03
+#                 dispersion = self.dlambda # initial dispersion guess                
 
                  lines    = {853.6163: 'Si I', 853.80147: 'Fe I', 854.21: 'Ca II',\
                              854.8079: 'Ti I'}
@@ -523,6 +529,7 @@ class ViSP_inversion:
 
         for arm in self.visp_arms:
             if arm.armID == fiducial_arm_ID:
+                print('arm id: ' + str(arm.armID)) # which arm id?
                 self.fiducial_arm = arm
             if arm.armID == fiducial_pol_ID:
                 self.fiducial_pol_arm = arm
@@ -639,7 +646,7 @@ class ViSP_inversion:
 
         nonfid_arms = [arm for arm in self.visp_arms if arm.armID != self.fiducial_arm.armID]
 
-        arm_pool = mp.Pool(processes=len(self.visp_arms) - 1)
+        arm_pool = mp.Pool(processes=len(self.visp_arms)) # removed '-1'
         
         results = [arm_pool.apply_async(arm.ViSP_remap_data, \
                                         args=(self.fiducial_arm, 0)) \
@@ -760,8 +767,8 @@ class ViSP_inversion:
 def main():
 
     
-    dataset_root   = '/scratch/alpine/hui9576/Data/DKIST/id.156511.623969/'
-    fits_directory = '/scratch/alpine/hui9576/Data/DKIST/Fits_dir/'
+    dataset_root   = '/home/aweitz/data/pid_2_95_recallibrated/' 
+    fits_directory = '/home/aweitz/data/ViSP-Inversion/pre-processed/'
 
     fiducial_arm_ID = 3
     fiducial_pol_ID = 1
