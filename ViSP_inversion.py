@@ -205,7 +205,7 @@ class ViSP_arm:
         index_positions = index_positions[mask]
         wave_positions  = wave_positions[mask]
 
-        print("self.spectrumID")
+        print(self.spectrumID)
         print("index_positions:", index_positions)
         print("wave_positions:", wave_positions)
 
