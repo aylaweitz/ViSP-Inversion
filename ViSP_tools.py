@@ -250,6 +250,8 @@ class hairlineset:
 
         avg_cont_slit  = np.nanmean(self.reference_img, axis=0) # changed to handle nans
         avg_cont_slit /= np.nanmean(avg_cont_slit)
+
+        print(f'avg cont slit: {avg_cont_slit}')
         
         hairmask      = np.where(avg_cont_slit < HAIR_CONTRAST_TRESHOLD)
         hair_regions  = consecutive(hairmask[0])
