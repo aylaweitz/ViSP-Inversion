@@ -116,10 +116,6 @@ class ViSP_arm:
         self.continuum_index = np.nanargmax(self.avg_spectrum) # changed to account for nans in data
         norm_spectrum        = self.avg_spectrum / np.nanmax(self.avg_spectrum)
 
-        # edge = 20  # or 50
-        # valid = self.avg_spectrum[edge:-edge] # recallibrated is choosing first pixel as min so attempting to fix by cropping beginning and end wave pixels
-        # ref_index = np.argmin(valid) + edge
-
         ref_index            = np.nanargmin(self.avg_spectrum) # changed to nanargmin to account for nans in data
         ref_lambda           = self.DeSIRe_line.lambda0
 
@@ -199,18 +195,6 @@ class ViSP_arm:
 
             n += 1
      
-        # coefficients = np.polyfit(index_positions, wave_positions, 2)
-        # poly         = np.poly1d(coefficients)
-        
-        # #-# Store the calibrated wavelengths for the current arm
-        
-        # self.calib_waves = poly(np.arange(Nwave))
-            
-        # Clean finite values -- TEST because failing with newly callibrated data
-        # mask = np.isfinite(index_positions) & np.isfinite(wave_positions)
-        # index_positions = index_positions[mask]
-        # wave_positions  = wave_positions[mask]
-
         print(self.spectrumID)
         print("index_positions:", index_positions)
         print("wave_positions:", wave_positions)
@@ -222,19 +206,6 @@ class ViSP_arm:
         # Check count
         if len(index_positions) < 3:
             raise RuntimeError("Not enough valid line matches for wavelength calibration")
-
-        # Check spread
-        # x_std = index_positions.std()
-        # if x_std < 1e-6:
-        #     raise RuntimeError("Degenerate index_positions (all nearly identical)")
-
-        # Normalize
-        # x_mean = index_positions.mean()
-        # x_scaled = (index_positions - x_mean) / x_std
-
-        # # Final sanity check
-        # if not np.all(np.isfinite(x_scaled)):
-        #     raise RuntimeError("Non-finite values after scaling")
 
         coefficients = np.polyfit(index_positions, wave_positions, 2)
         poly = np.poly1d(coefficients)
