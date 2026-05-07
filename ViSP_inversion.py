@@ -239,7 +239,8 @@ class ViSP_arm:
         coefficients = np.polyfit(index_positions, wave_positions, 2)
         poly = np.poly1d(coefficients)
 
-        self.calib_waves = poly((np.arange(Nwave) - x_mean) / x_std)
+        #-# Store the calibrated wavelengths for the current arm
+        self.calib_waves = poly(np.arange(Nwave))
 
 
     def ViSP_broadened_atlas(self, waves, FWHM, wave_offset):
