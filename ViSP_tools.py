@@ -196,8 +196,8 @@ def consecutive(data, stepsize=1):
 
 def calc_continuum_index(spectrum, cut_edge_val=30): # need to consider subset bc nans in newly callibrated data
         spectrum_subset = spectrum[cut_edge_val:-cut_edge_val] # find continuum index within some range or wavelengths
-        cont_index = np.nanargmax(spectrum_subset)
-        print(cont_index)
+        cont_index = np.nanargmax(spectrum_subset) + cut_edge_val
+        print(f'continuum idx: {cont_index}')
         return cont_index
 
 
