@@ -112,8 +112,8 @@ class ViSP_arm:
         stokes_I = self.transp_data[0, :, :, :].compute()
         Nwave    = stokes_I.shape[0]
 
-        self.avg_spectrum    = np.mean(stokes_I, axis=(1, 2))
-        self.continuum_index = np.argmax(self.avg_spectrum)
+        self.avg_spectrum    = np.nanmean(stokes_I, axis=(1, 2)) # changed to account for nans in data
+        self.continuum_index = np.nanargmax(self.avg_spectrum) # changed to account for nans in data
         norm_spectrum        = self.avg_spectrum / np.max(self.avg_spectrum)
 
         # edge = 20  # or 50
