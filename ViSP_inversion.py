@@ -114,7 +114,7 @@ class ViSP_arm:
 
         self.avg_spectrum    = np.nanmean(stokes_I, axis=(1, 2)) # changed to account for nans in data
         self.continuum_index = np.nanargmax(self.avg_spectrum) # changed to account for nans in data
-        norm_spectrum        = self.avg_spectrum / np.max(self.avg_spectrum)
+        norm_spectrum        = self.avg_spectrum / np.nanmax(self.avg_spectrum)
 
         # edge = 20  # or 50
         # valid = self.avg_spectrum[edge:-edge] # recallibrated is choosing first pixel as min so attempting to fix by cropping beginning and end wave pixels
