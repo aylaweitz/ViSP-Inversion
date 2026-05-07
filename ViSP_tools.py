@@ -248,8 +248,8 @@ class hairlineset:
 
         ## Spatial average over the scan direction in the continuum intensity
 
-        avg_cont_slit  = np.mean(self.reference_img, axis=0)
-        avg_cont_slit /= np.mean(avg_cont_slit)
+        avg_cont_slit  = np.nanmean(self.reference_img, axis=0) # changed to handle nans
+        avg_cont_slit /= np.nanmean(avg_cont_slit)
         
         hairmask      = np.where(avg_cont_slit < HAIR_CONTRAST_TRESHOLD)
         hair_regions  = consecutive(hairmask[0])
