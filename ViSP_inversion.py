@@ -207,9 +207,9 @@ class ViSP_arm:
         # self.calib_waves = poly(np.arange(Nwave))
             
         # Clean finite values -- TEST because failing with newly callibrated data
-        mask = np.isfinite(index_positions) & np.isfinite(wave_positions)
-        index_positions = index_positions[mask]
-        wave_positions  = wave_positions[mask]
+        # mask = np.isfinite(index_positions) & np.isfinite(wave_positions)
+        # index_positions = index_positions[mask]
+        # wave_positions  = wave_positions[mask]
 
         print(self.spectrumID)
         print("index_positions:", index_positions)
