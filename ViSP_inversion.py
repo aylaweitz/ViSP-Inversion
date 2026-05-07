@@ -210,6 +210,10 @@ class ViSP_arm:
         print("index_positions:", index_positions)
         print("wave_positions:", wave_positions)
 
+        print("ref_index:", ref_index)
+        print("ref_lambda:", ref_lambda)
+        print("lambda at ref_index (guess):", waves_guess[ref_index])
+
         # Check count
         if len(index_positions) < 3:
             raise RuntimeError("Not enough valid line matches for wavelength calibration")
