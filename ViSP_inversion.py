@@ -113,7 +113,7 @@ class ViSP_arm:
         Nwave    = stokes_I.shape[0]
 
         self.avg_spectrum    = np.nanmean(stokes_I, axis=(1, 2)) # changed to account for nans in data
-        self.continuum_index = np.nanargmax(self.avg_spectrum) # changed to account for nans in data
+        self.continuum_index = vt.calc_continuum_index(self.avg_spectrum) # changed to account for nans in data
         norm_spectrum        = self.avg_spectrum / np.nanmax(self.avg_spectrum)
 
         ref_index            = np.nanargmin(self.avg_spectrum) # changed to nanargmin to account for nans in data
@@ -259,7 +259,7 @@ class ViSP_arm:
 
         self.calib_waves     = self.calib_waves[limits[0]:limits[1]]
         self.avg_spectrum    = self.avg_spectrum[limits[0]:limits[1]]
-        self.continuum_index = np.nanargmax(self.avg_spectrum)
+        self.continuum_index = vt.calc_continuum_index(self.avg_spectrum)
  
 
     def ViSP_remap_data(self, fiducial_arm, dummy):
@@ -339,7 +339,7 @@ class ViSP_arm:
         quiet = np.where(pol_map < POL_THRESHOLD)
 
         avg_quiet_spectrum = np.nanmean(self.spectrum[0, :, quiet[0], quiet[1]], axis=0)
-        continuum_index    = np.nanargmax(avg_quiet_spectrum)
+        continuum_index    = vt.calc_continuum_index(avg_quiet_spectrum)
         quiet_continuum    = avg_quiet_spectrum[continuum_index]
         lambda_continuum   = self.calib_waves[continuum_index]
 

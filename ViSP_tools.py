@@ -194,6 +194,12 @@ def consecutive(data, stepsize=1):
     return np.split(data, np.where(np.diff(data) != stepsize)[0]+1)
 
 
+def calc_continuum_index(spectrum, cut_edge_val=30): # need to consider subset bc nans in newly callibrated data
+        spectrum_subset = spectrum[cut_edge_val:-cut_edge_val] # find continuum index within some range or wavelengths
+        cont_index = np.nanargmax(spectrum_subset)
+        return cont_index
+
+
 @jit
 def remove_telluric_pix(stokes_I, j0, j1):
 
