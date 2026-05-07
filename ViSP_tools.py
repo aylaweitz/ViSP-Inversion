@@ -9,7 +9,7 @@ def find_parmax(x, y, coeff=False):
 
     """Fit a parabola to the maximum of a curve"""
     
-    index = np.argmax(y)
+    index = np.nanargmax(y) # account for nans
 
     x1 = x[index]
     f1 = y[index]
@@ -41,7 +41,7 @@ def find_parmin(x, y, coeff=False):
 
     """Fit a parabola to the minimum of a curve"""
     
-    index = np.argmin(y)
+    index = np.nanargmin(y) # account for nans
 
     x1 = x[index]
     f1 = y[index]
@@ -117,7 +117,7 @@ def table_invert(table, values, mode=None):
             lookup.append({"index": len(t_array)-1, \
                            "value": t_array[-1], "eff_index": len(t_array)-1})
         else:
-            index = np.argmin(np.abs(t_array - v))
+            index = np.nanargmin(np.abs(t_array - v)) # account for nans
 
             if v > t_array[index]:
                 eff_index = index + \
@@ -241,7 +241,7 @@ class hairlineset:
 
     def find(self):
 
-        HAIR_CONTRAST_TRESHOLD = 0.3
+        HAIR_CONTRAST_TRESHOLD = 0.5 #0.3 -- increased thresh for newly callibrated data?
         HAIR_MARGIN            = 5
 
         (Nscan, Npix) = np.shape(self.reference_img)
@@ -277,7 +277,7 @@ class hairlineset:
 
 def psf_broad(wavelength, spectrum, FWHM, mode="Gaussian"):
 
-  dwave_min = np.min(np.diff(wavelength))
+  dwave_min = np.nanmin(np.diff(wavelength)) # account for nans
   Nwave     = (wavelength[-1] - wavelength[0]) / dwave_min
 
   Nequid = 1

@@ -259,7 +259,7 @@ class ViSP_arm:
 
         self.calib_waves     = self.calib_waves[limits[0]:limits[1]]
         self.avg_spectrum    = self.avg_spectrum[limits[0]:limits[1]]
-        self.continuum_index = np.argmax(self.avg_spectrum)
+        self.continuum_index = np.nanargmax(self.avg_spectrum)
  
 
     def ViSP_remap_data(self, fiducial_arm, dummy):
@@ -285,7 +285,7 @@ class ViSP_arm:
 
         cross_corr = np.abs(np.fft.ifft2(np.fft.fft2(arm_image) * \
                                          np.conj(np.fft.fft2(fid_image))))
-        icx, icy = np.unravel_index(np.argmax(cross_corr), cross_corr.shape)
+        icx, icy = np.unravel_index(np.nanargmax(cross_corr), cross_corr.shape)
         max_area = np.zeros((3, 3), dtype=np.float32)
 
         for k in range(3):
@@ -338,8 +338,8 @@ class ViSP_arm:
         
         quiet = np.where(pol_map < POL_THRESHOLD)
 
-        avg_quiet_spectrum = np.mean(self.spectrum[0, :, quiet[0], quiet[1]], axis=0)
-        continuum_index    = np.argmax(avg_quiet_spectrum)
+        avg_quiet_spectrum = np.nanmean(self.spectrum[0, :, quiet[0], quiet[1]], axis=0)
+        continuum_index    = np.nanargmax(avg_quiet_spectrum)
         quiet_continuum    = avg_quiet_spectrum[continuum_index]
         lambda_continuum   = self.calib_waves[continuum_index]
 
@@ -405,8 +405,8 @@ class ViSP_arm:
                 l0c, l1c = index0 - DELTA_CORE, index0 + DELTA_CORE
                 l0w, l1w = index0 - DELTA_WING, index0 + DELTA_WING
         
-                polmap = np.max(np.sqrt(np.sum(self.spectrum[1:, l0w:l1w, :, :]**2, axis=0)) / \
-                                self.spectrum[0, l0w:l1w, :, :], axis=0)
+                polmap = np.nanmax(np.sqrt(np.nansum(self.spectrum[1:, l0w:l1w, :, :]**2, axis=0)) / \
+                                self.spectrum[0, l0w:l1w, :, :], axis=0) # account for nans
 
                 pstrong = np.argwhere(polmap >= P_TRESHOLD)
                 py = pstrong[:, 0]
@@ -418,16 +418,16 @@ class ViSP_arm:
                 Mij    = np.zeros(Nstokes, dtype=np.float64)
                 Mij[0] = 1.0
                 for i in range(1, Nstokes):
-                    Mij[i] = np.mean(self.spectrum[i, c0:c1, :, :] / self.spectrum[0, c0:c1, :, :])
+                    Mij[i] = np.nanmean(self.spectrum[i, c0:c1, :, :] / self.spectrum[0, c0:c1, :, :]) # account for nans
                     spectrum_shft[i, :, :, :] = self.spectrum[i, :, :, :] - Mij[i] * self.spectrum[0, :, :, :]
             
 
                 lindex = np.arange(Nwave).reshape([Nwave, 1, 1])
                     
-                lcen = np.sum(np.sqrt(np.sum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)) * \
+                lcen = np.nansum(np.sqrt(np.nansum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)) * \
                               lindex[l0c:l1c, :, :], axis=0) / \
-                              np.sum(np.sqrt(np.sum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)), axis=0)
-                lshift = int(np.median(lcen)) - lcen
+                              np.nansum(np.sqrt(np.nansum(spectrum_shft[1:, l0c:l1c, :, :]**2, axis=0)), axis=0)
+                lshift = int(np.nanmedian(lcen)) - lcen # account for nans
 
                 spectrum_shift = np.zeros(Nwave, dtype=np.float32)
                 for k in range(Npix):
@@ -438,9 +438,9 @@ class ViSP_arm:
                             spectrum_shft[m, :, l, k] = spectrum_shift
 
 
-                Qtmp = np.sum(spectrum_shft[1, l0c:l1c, py, px], axis=1)
-                Utmp = np.sum(spectrum_shft[2, l0c:l1c, py, px], axis=1)
-                Vtmp = np.sum(spectrum_shft[3, l0c:l1c, py, px], axis=1)
+                Qtmp = np.nansum(spectrum_shft[1, l0c:l1c, py, px], axis=1) # account for nans
+                Utmp = np.nansum(spectrum_shft[2, l0c:l1c, py, px], axis=1)
+                Vtmp = np.nansum(spectrum_shft[3, l0c:l1c, py, px], axis=1)
 
                 data_frame = pd.DataFrame({'SQ':Qtmp, 'SU':Utmp, 'SV':Vtmp}, \
                                           columns=['SQ', 'SU', 'SV'])
@@ -569,7 +569,7 @@ class ViSP_inversion:
         for i in range(len(self.visp_arms)):
             arm = self.visp_arms[i]
 
-            norm_obs = arm.avg_spectrum / np.max(arm.avg_spectrum)
+            norm_obs = arm.avg_spectrum / np.nanmax(arm.avg_spectrum) # account for nans
             ax[i].plot(arm.calib_waves, norm_obs, label='average spectrum')
             ax[i].plot(arm.lambda_atlas, arm.norm_atlas, label='atlas')
             ax[i].set(title='arm ID: {0}'.format(arm.armID))
@@ -614,7 +614,7 @@ class ViSP_inversion:
         if len(set(slit_steps)) > 1:
             print("\n Warning: Slit steps not unique between arms. Using mean value.\n")
 
-        self.slit_step = np.mean(slit_steps)
+        self.slit_step = np.nanmean(slit_steps) # account for nans
 
 
     def ViSP_solar_location(self):
@@ -652,7 +652,7 @@ class ViSP_inversion:
         for arm in self.visp_arms:
             
             reference_img  = arm.spectrum[0, arm.continuum_index, :, :].copy()
-            reference_img /= np.mean(reference_img)
+            reference_img /= np.nanmean(reference_img) # account for nans
             
             arm.hairlineset = vt.hairlineset(reference_img)
             arm.hairlineset.remove(arm.spectrum)
@@ -774,7 +774,7 @@ class ViSP_inversion:
         stokes_V = self.fiducial_pol_arm.spectrum[3, :, :, :]
         Nwave    = stokes_I.shape[0]
 
-        self.fiducial_pol_map = np.sum(np.abs(stokes_V)/stokes_I, axis=0) / Nwave
+        self.fiducial_pol_map = np.nansum(np.abs(stokes_V)/stokes_I, axis=0) / Nwave # account for nans
 
         
 def main():
