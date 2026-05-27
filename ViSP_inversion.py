@@ -35,11 +35,67 @@ class ViSP_arm:
         self.ViSP_analyze_asdf()
 
 
+    def crop_nan_wavelengths(data_array, pad=0):
+        """
+        Automatically detect and crop NaN edges along the wavelength axis.
+        
+        Assumes data shape: (stokes, time, wavelength, spatial),
+        where wavelength is axis -2 (second to last).
+        
+        Parameters
+        ----------
+        data_array : dask/numpy array
+            The data array to crop. NaNs should be at the edges of the
+            wavelength axis (axis -2).
+        pad : int
+            Extra pixels to remove beyond the detected NaN edge, as a
+            safety buffer. Default 0.
+        
+        Returns
+        -------
+        sliced : array
+            The cropped array with NaN wavelength edges removed.
+        wl_slice : slice
+            The slice applied, so you can apply it to other arrays
+            (e.g. a wavelength coordinate array).
+        """
+        # Collapse all non-wavelength axes to get a 1D mask of which
+        # wavelength pixels contain *any* NaN across the full FOV
+        # Wavelength is axis -2; compute a small representative slice
+        # (first Stokes, first time step) -- these seem to stay constant
+        sample = data_array[0, 0, :, 10:-10].compute()  # shape: (wavelength, spatial) -- newly callibrated is padded with ~10 NaN values on left and right of the image??? so cut them off
+
+        # True where a wavelength row has at least one NaN
+        nan_mask = np.any(np.isnan(sample), axis=-1)  # shape: (wavelength,)
+
+        # Find first and last fully valid wavelength row
+        valid_indices = np.where(~nan_mask)[0]
+        if valid_indices.size == 0:
+            raise ValueError("No fully NaN-free wavelength rows found!")
+
+        wl_start = int(valid_indices[0])  + pad
+        wl_end   = int(valid_indices[-1]) + 1 - pad  # +1 for exclusive slice end
+
+        wl_slice = slice(wl_start, wl_end)
+        sliced   = data_array[..., wl_slice, :]  # works for any leading dims
+
+        return sliced, wl_slice
+
+
     def ViSP_analyze_asdf(self):
 
         self.asdf_file   = glob.glob(os.path.join(self.dataset_path, '*.asdf'))[0]
         self.dataset     = dkist.load_dataset(self.asdf_file)
-        self.transp_data = np.transpose(self.dataset.data, axes=(0, 2, 1, 3))
+        self.data = self.dataset.data
+
+        # --- Crop NaN wavelength edges introduced by slit-curvature correction ---
+        self.data, self.wl_slice = self.crop_nan_wavelengths(self.data)
+        self.Nlambda = self.data.shape[-2]   # update after crop (overrides header value below)
+        print(f"Wavelength axis cropped to rows {self.wl_slice} "
+              f"({self.Nlambda} pixels after crop)")
+        # -------------------------------------------------------------------------
+
+        self.transp_data = np.transpose(self.data, axes=(0, 2, 1, 3))
 
         self.datasetID  = self.dataset.headers[0]["DSETID"]
         self.spectrumID = self.dataset.headers[0]["WAVEBAND"]
@@ -80,7 +136,7 @@ class ViSP_arm:
             case _:
                 pass
 
-        self.Nlambda     = self.dataset.headers[0]["DNAXIS2"]
+        # self.Nlambda     = self.dataset.headers[0]["DNAXIS2"]
         DeSIRe_line_list = vt.DeSIRe_line.get_list()
 
         match self.spectrumID:
