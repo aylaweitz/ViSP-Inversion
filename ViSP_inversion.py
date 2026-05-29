@@ -86,10 +86,10 @@ class ViSP_arm:
 
         self.asdf_file   = glob.glob(os.path.join(self.dataset_path, '*.asdf'))[0]
         self.dataset     = dkist.load_dataset(self.asdf_file)
-        self.data = self.dataset.data
+        # self.data = self.dataset.data
 
         # --- Crop NaN wavelength edges introduced by slit-curvature correction ---
-        self.data, self.wl_slice = self.crop_nan_wavelengths(self.data)
+        self.data, self.wl_slice = self.crop_nan_wavelengths(self.dataset.data)
         self.Nlambda = self.data.shape[-2]   # update after crop (overrides header value below)
         print(f"Wavelength axis cropped to rows {self.wl_slice} "
               f"({self.Nlambda} pixels after crop)")
