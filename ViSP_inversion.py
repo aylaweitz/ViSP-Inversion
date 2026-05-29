@@ -35,7 +35,7 @@ class ViSP_arm:
         self.ViSP_analyze_asdf()
 
 
-    def crop_nan_wavelengths(data_array, pad=0):
+    def crop_nan_wavelengths(self, data_array, pad=0):
         """
         Automatically detect and crop NaN edges along the wavelength axis.
         
