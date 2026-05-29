@@ -166,7 +166,7 @@ class ViSP_arm:
         DELTA_LAM     = 0.1 # 0.01 -- increased range because failing to find lines
         POL_THRESHOLD = 0.002
         
-        stokes_I = self.transp_data[0, :, :, :].compute()
+        stokes_I = self.transp_data[0, :, :, :]#.compute() # -- changed it so its already computed
         Nwave    = stokes_I.shape[0]
 
         self.avg_spectrum    = np.nanmean(stokes_I, axis=(1, 2)) # changed to account for nans in data
@@ -312,7 +312,7 @@ class ViSP_arm:
         limits = vt.table_invert(self.calib_waves, np.array([self.lambda_blu, self.lambda_red]), \
                                  mode="index")
         
-        self.spectrum = self.transp_data[:, limits[0]:limits[1], :, :].compute()
+        self.spectrum = self.transp_data[:, limits[0]:limits[1], :, :]#.compute() # -- changed so that its already computed
 
         self.calib_waves     = self.calib_waves[limits[0]:limits[1]]
         self.avg_spectrum    = self.avg_spectrum[limits[0]:limits[1]]
