@@ -89,7 +89,8 @@ class ViSP_arm:
         # self.data = self.dataset.data
 
         # --- Crop NaN wavelength edges introduced by slit-curvature correction ---
-        self.data, self.wl_slice = self.crop_nan_wavelengths(self.dataset.data)
+        cropped, self.wl_slice = self.crop_nan_wavelengths(self.dataset.data)
+        self.data = cropped.compute()
         self.Nlambda = self.data.shape[-2]   # update after crop (overrides header value below)
         print(f"Wavelength axis cropped to rows {self.wl_slice} "
               f"({self.Nlambda} pixels after crop)")
@@ -289,7 +290,7 @@ class ViSP_arm:
         POL_THRESHOLD = 0.005
 
         quiet = np.where(pol_map < POL_THRESHOLD)
-        avg_quiet_spectrum = np.mean(self.spectrum[0, :, quiet[0], quiet[1]], axis=0)
+        avg_quiet_spectrum = np.nanmean(self.spectrum[0, :, quiet[0], quiet[1]], axis=0)
         
         for limits in self.telluric:
             j0, j1 = vt.table_invert(self.lambda_atlas, limits, mode="index")
