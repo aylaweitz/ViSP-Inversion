@@ -18,6 +18,8 @@ from scipy.optimize import curve_fit
 import dkist
 import ViSP_tools as vt
 
+import pickle
+
 
 class ViSP_arm:
 
@@ -707,6 +709,14 @@ class ViSP_inversion:
     def ViSP_align_arms(self):
 
         for arm in self.visp_arms:
+
+            ### TESTING WHY PICKLING NOT WORKING
+            for k, v in arm.__dict__.items():
+                try:
+                    pickle.dumps(v)
+                except Exception as e:
+                    print(f"UNPICKLABLE: {k} -> {e}")
+            ###
             
             reference_img  = arm.spectrum[0, arm.continuum_index, :, :].copy()
             reference_img /= np.nanmean(reference_img) # account for nans
