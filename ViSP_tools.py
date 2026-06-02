@@ -248,7 +248,7 @@ class hairlineset:
 
     def find(self):
 
-        HAIR_CONTRAST_TRESHOLD = 0.5 #0.3 -- increased thresh for newly callibrated data?
+        HAIR_CONTRAST_TRESHOLD = 0.3 #-- increased thresh for newly callibrated data?
         HAIR_MARGIN            = 5
 
         (Nscan, Npix) = np.shape(self.reference_img)
