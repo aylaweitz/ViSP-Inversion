@@ -36,6 +36,15 @@ class ViSP_arm:
 
         self.ViSP_analyze_asdf()
 
+    #### drop dataset when pickling
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state['dataset']
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+    ####
 
     def crop_nan_wavelengths(self, data_array, pad=0):
         """
