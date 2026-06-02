@@ -46,51 +46,35 @@ class ViSP_arm:
         self.__dict__.update(state)
     ####
 
-    def crop_nan_wavelengths(self, data_array, pad=0):
+    def crop_nan_wavelengths(self, data_array, pad=0, spatial_pad=0):
         """
-        Automatically detect and crop NaN edges along the wavelength axis.
-        
-        Assumes data shape: (stokes, time, wavelength, spatial),
-        where wavelength is axis -2 (second to last).
-        
-        Parameters
-        ----------
-        data_array : dask/numpy array
-            The data array to crop. NaNs should be at the edges of the
-            wavelength axis (axis -2).
-        pad : int
-            Extra pixels to remove beyond the detected NaN edge, as a
-            safety buffer. Default 0.
-        
-        Returns
-        -------
-        sliced : array
-            The cropped array with NaN wavelength edges removed.
-        wl_slice : slice
-            The slice applied, so you can apply it to other arrays
-            (e.g. a wavelength coordinate array).
+        Detect and crop NaN edges along both the wavelength axis (axis -2)
+        and spatial axis (axis -1).
         """
-        # Collapse all non-wavelength axes to get a 1D mask of which
-        # wavelength pixels contain *any* NaN across the full FOV
-        # Wavelength is axis -2; compute a small representative slice
-        # (first Stokes, first time step) -- these seem to stay constant
-        sample = data_array[0, 0, :, 10:-10].compute()  # shape: (wavelength, spatial) -- newly callibrated is padded with ~10 NaN values on left and right of the image??? so cut them off
+        sample = data_array[0, 0, :, :].compute()  # (wavelength, spatial)
 
-        # True where a wavelength row has at least one NaN
-        nan_mask = np.any(np.isnan(sample), axis=-1)  # shape: (wavelength,)
+        # Wavelength crop: rows with any NaN across spatial
+        nan_mask_wl = np.any(np.isnan(sample), axis=-1)
+        valid_wl = np.where(~nan_mask_wl)[0]
+        if valid_wl.size == 0:
+            raise ValueError("No NaN-free wavelength rows found!")
+        wl_start = int(valid_wl[0])  + pad
+        wl_end   = int(valid_wl[-1]) + 1 - pad
 
-        # Find first and last fully valid wavelength row
-        valid_indices = np.where(~nan_mask)[0]
-        if valid_indices.size == 0:
-            raise ValueError("No fully NaN-free wavelength rows found!")
-
-        wl_start = int(valid_indices[0])  + pad
-        wl_end   = int(valid_indices[-1]) + 1 - pad  # +1 for exclusive slice end
+        # Spatial crop: columns with any NaN across wavelength
+        nan_mask_sp = np.any(np.isnan(sample), axis=0)
+        valid_sp = np.where(~nan_mask_sp)[0]
+        if valid_sp.size == 0:
+            raise ValueError("No NaN-free spatial columns found!")
+        sp_start = int(valid_sp[0])  + spatial_pad
+        sp_end   = int(valid_sp[-1]) + 1 - spatial_pad
 
         wl_slice = slice(wl_start, wl_end)
-        sliced   = data_array[..., wl_slice, :]  # works for any leading dims
+        sp_slice = slice(sp_start, sp_end)
 
-        return sliced, wl_slice
+        sliced = data_array[..., wl_slice, sp_slice]
+
+        return sliced, wl_slice, sp_slice
 
 
     def ViSP_analyze_asdf(self):
@@ -100,7 +84,7 @@ class ViSP_arm:
         # self.data = self.dataset.data
 
         # --- Crop NaN wavelength edges introduced by slit-curvature correction ---
-        cropped, self.wl_slice = self.crop_nan_wavelengths(self.dataset.data)
+        cropped, self.wl_slice, self.sp_slice = self.crop_nan_wavelengths(self.dataset.data, pad=2, spatial_pad=2)
         self.data = cropped.compute()
         self.Nlambda = self.data.shape[-2]   # update after crop (overrides header value below)
         print(f"Wavelength axis cropped to rows {self.wl_slice} "
@@ -348,8 +332,8 @@ class ViSP_arm:
         arm_ref_remap = vt.ViSP_remap_image(reference_img, x_fid, y_fid)
 
         fid_image = fiducial_arm.spectrum[0, fiducial_arm.continuum_index, :, :].copy()
-        fid_image = fid_image / np.mean(fid_image) - 1.0
-        arm_image = arm_ref_remap / np.mean(arm_ref_remap) - 1.0
+        fid_image = fid_image / np.nanmean(fid_image) - 1.0 # changed to nanmean
+        arm_image = arm_ref_remap / np.nanmean(arm_ref_remap) - 1.0 # changed to nanmean
 
         cross_corr = np.abs(np.fft.ifft2(np.fft.fft2(arm_image) * \
                                          np.conj(np.fft.fft2(fid_image))))
@@ -720,12 +704,12 @@ class ViSP_inversion:
         for arm in self.visp_arms:
 
             ### TESTING WHY PICKLING NOT WORKING
-            for k, v in arm.__dict__.items():
-                try:
-                    pickle.dumps(v)
-                except Exception as e:
-                    print(f"UNPICKLABLE: {k} -> {e}")
-            ###
+            # for k, v in arm.__dict__.items():
+            #     try:
+            #         pickle.dumps(v)
+            #     except Exception as e:
+            #         print(f"UNPICKLABLE: {k} -> {e}")
+            # ###
             
             reference_img  = arm.spectrum[0, arm.continuum_index, :, :].copy()
             reference_img /= np.nanmean(reference_img) # account for nans
